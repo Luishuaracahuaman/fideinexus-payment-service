@@ -7,9 +7,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "finanzas")
 @Data
-public class Payment {
+public class Finanzas {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,8 +22,8 @@ public class Payment {
     private Integer peopleId;
 
     @ManyToOne
-    @JoinColumn(name = "payment_type_id", nullable = false)
-    private PaymentType paymentType;
+    @JoinColumn(name = "reason_id", nullable = false)
+    private Reason reason;
 
     @ManyToOne
     @JoinColumn(name = "payment_method_id", nullable = false)
@@ -32,16 +32,13 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
-    @Column(name = "type_currency_id")
-    private Integer typeCurrencyId;
-
     @Column(name = "fecha_pago", nullable = false)
     private LocalDate fechaPago;
 
-    @Column(length = 150)
+    @Column(name = "referencia", length = 150)
     private String referencia;
 
-    @Column(length = 1)
+    @Column(name = "estado", length = 1)
     private String estado;
 
     @Column(name = "created_at", updatable = false)
@@ -49,8 +46,8 @@ public class Payment {
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        if (this.estado == null)
-            this.estado = "A";
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

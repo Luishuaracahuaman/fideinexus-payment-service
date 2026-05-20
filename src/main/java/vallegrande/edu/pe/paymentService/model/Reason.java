@@ -4,17 +4,17 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
-@Table(name = "payment_types")
+@Table(name = "reasons")
 @Data
-public class PaymentType {
+public class Reason {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    @Column(name = "nombre", length = 100, nullable = false)
     private String nombre;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "descripcion", columnDefinition = "TEXT")
     private String descripcion;
 }
