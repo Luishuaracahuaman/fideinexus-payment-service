@@ -9,7 +9,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/finanzas")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // Esto está perfecto para evitar bloqueos
 public class FinanzasRest {
 
     @Autowired
@@ -25,7 +25,10 @@ public class FinanzasRest {
         return finanzasService.guardar(finanzas);
     }
 
-    @PutMapping("/estado/{id}")
+    // === EL CAMBIO ESTÁ AQUÍ ===
+    // Cambiamos @PutMapping por @PatchMapping y ordenamos la URL para que coincida
+    // con Angular
+    @PatchMapping("/{id}/estado")
     public Finanzas cambiarEstado(@PathVariable Long id, @RequestParam String estado) {
         return finanzasService.cambiarEstado(id, estado);
     }
