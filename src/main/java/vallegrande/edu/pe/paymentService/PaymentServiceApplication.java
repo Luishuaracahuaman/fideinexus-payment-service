@@ -1,13 +1,13 @@
-package vallegrande.edu.pe.paymentService;
+package vallegrande.edu.pe.paymentservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PaymentServiceApplication {
+public class PaymentserviceApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(PaymentServiceApplication.class, args);
+		SpringApplication.run(PaymentserviceApplication.class, args);
 	}
 
 }

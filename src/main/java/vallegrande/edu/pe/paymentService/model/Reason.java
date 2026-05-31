@@ -1,23 +1,19 @@
-package vallegrande.edu.pe.paymentService.model;
+package vallegrande.edu.pe.paymentservice.model;
 
-import jakarta.persistence.*;
 import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 
 @Data
-@Entity
-@Table(name = "reasons")
+@Table("reason")
 public class Reason {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(name = "nombre", length = 100, nullable = false)
     private String nombre;
 
-    @Column(name = "descripcion", columnDefinition = "TEXT")
     private String descripcion;
 
-    @Column(name = "request_id")
-    private Integer requestId;
+    private Long requestId;
 }

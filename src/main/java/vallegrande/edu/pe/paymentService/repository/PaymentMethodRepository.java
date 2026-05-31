@@ -1,7 +1,7 @@
-package vallegrande.edu.pe.paymentService.repository;
+package vallegrande.edu.pe.paymentservice.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import vallegrande.edu.pe.paymentService.model.PaymentMethod;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import vallegrande.edu.pe.paymentservice.model.PaymentMethod;
 
-public interface PaymentMethodRepository extends JpaRepository<PaymentMethod, Long> {
+public interface PaymentMethodRepository extends R2dbcRepository<PaymentMethod, Integer> {
 }

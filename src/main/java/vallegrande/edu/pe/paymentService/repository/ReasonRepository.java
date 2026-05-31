@@ -1,9 +1,7 @@
-package vallegrande.edu.pe.paymentService.repository;
+package vallegrande.edu.pe.paymentservice.repository;
 
-import vallegrande.edu.pe.paymentService.model.Reason;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
+import vallegrande.edu.pe.paymentservice.model.Reason;
 
-@Repository
-public interface ReasonRepository extends JpaRepository<Reason, Long> {
+public interface ReasonRepository extends R2dbcRepository<Reason, Integer> {
 }
