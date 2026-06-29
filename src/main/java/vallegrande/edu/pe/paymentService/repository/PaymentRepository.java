@@ -1,8 +1,9 @@
-package vallegrande.edu.pe.paymentservice.repository;
+package vallegrande.edu.pe.paymentService.repository;
 
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
+
 import reactor.core.publisher.Flux;
-import vallegrande.edu.pe.paymentservice.model.Payment;
+import vallegrande.edu.pe.paymentService.model.Payment;
 
 public interface PaymentRepository extends R2dbcRepository<Payment, Long> {
 

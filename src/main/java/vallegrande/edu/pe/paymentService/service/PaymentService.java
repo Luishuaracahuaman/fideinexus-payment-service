@@ -1,10 +1,10 @@
-package vallegrande.edu.pe.paymentservice.service;
+package vallegrande.edu.pe.paymentService.service;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import vallegrande.edu.pe.paymentservice.model.Payment;
-import vallegrande.edu.pe.paymentservice.model.PaymentMethod;
-import vallegrande.edu.pe.paymentservice.model.Reason;
+import vallegrande.edu.pe.paymentService.model.Payment;
+import vallegrande.edu.pe.paymentService.model.PaymentMethod;
+import vallegrande.edu.pe.paymentService.model.Reason;
 
 public interface PaymentService {
 

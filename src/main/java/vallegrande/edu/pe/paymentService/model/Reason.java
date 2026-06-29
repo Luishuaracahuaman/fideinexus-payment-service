@@ -1,8 +1,9 @@
-package vallegrande.edu.pe.paymentservice.model;
+package vallegrande.edu.pe.paymentService.model;
 
-import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
+
+import lombok.Data;
 
 @Data
 @Table("reason")

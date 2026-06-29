@@ -1,17 +1,17 @@
-package vallegrande.edu.pe.paymentservice.service.impl;
+package vallegrande.edu.pe.paymentService.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import vallegrande.edu.pe.paymentservice.model.Payment;
-import vallegrande.edu.pe.paymentservice.model.PaymentMethod;
-import vallegrande.edu.pe.paymentservice.model.Reason;
-import vallegrande.edu.pe.paymentservice.repository.PaymentMethodRepository;
-import vallegrande.edu.pe.paymentservice.repository.PaymentRepository;
-import vallegrande.edu.pe.paymentservice.repository.ReasonRepository;
-import vallegrande.edu.pe.paymentservice.service.PaymentService;
+import vallegrande.edu.pe.paymentService.model.Payment;
+import vallegrande.edu.pe.paymentService.model.PaymentMethod;
+import vallegrande.edu.pe.paymentService.model.Reason;
+import vallegrande.edu.pe.paymentService.repository.PaymentMethodRepository;
+import vallegrande.edu.pe.paymentService.repository.PaymentRepository;
+import vallegrande.edu.pe.paymentService.repository.ReasonRepository;
+import vallegrande.edu.pe.paymentService.service.PaymentService;
 
 import java.time.LocalDateTime;
 

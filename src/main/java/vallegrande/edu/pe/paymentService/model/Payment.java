@@ -1,14 +1,15 @@
-package vallegrande.edu.pe.paymentservice.model;
+package vallegrande.edu.pe.paymentService.model;
 
-import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import lombok.Data;
 
 @Data
 @Table("payment")
