@@ -46,9 +46,9 @@ VALUES
     (4, 'Transferencia Bancaria','Transferencia bancaria directa')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO reasons (id, nombre, descripcion, request_id)
-VALUES
-    (1, 'Fianza por Matrimonio',    'Fianza requerida para tramitar matrimonio', NULL),
-    (2, 'Trámite de Certificado',   'Pago por emisión de acta o certificado sacramental', NULL),
-    (3, 'Reserva de Misa',          'Pago por reserva de misa parroquial', NULL)
+INSERT INTO reasons (id, nombre, descripcion, request_id) VALUES 
+(1, 'Fianza por Matrimonio', 'Fianza requerida para tramitar matrimonio', NULL), 
+(2, 'Trámite de Certificado', 'Pago por emisión de acta o certificado sacramental', NULL), 
+(3, 'Reserva de Misa', 'Pago por reserva de misa parroquial', NULL),
+(4, 'Venta de Libros', 'Pago por adquisición de libros o material', NULL)
 ON CONFLICT (id) DO NOTHING;

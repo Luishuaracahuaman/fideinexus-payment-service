@@ -1,22 +1,22 @@
 package vallegrande.edu.pe.paymentService.service.impl;
 
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import vallegrande.edu.pe.paymentService.client.BookClient;
 import vallegrande.edu.pe.paymentService.model.Payment;
 import vallegrande.edu.pe.paymentService.model.PaymentMethod;
 import vallegrande.edu.pe.paymentService.model.Reason;
-import vallegrande.edu.pe.paymentService.model.People;
 import vallegrande.edu.pe.paymentService.repository.PaymentMethodRepository;
 import vallegrande.edu.pe.paymentService.repository.PaymentRepository;
 import vallegrande.edu.pe.paymentService.repository.PeopleRepository;
 import vallegrande.edu.pe.paymentService.repository.ReasonRepository;
 import vallegrande.edu.pe.paymentService.service.PaymentService;
-
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -129,9 +129,10 @@ public class PaymentServiceImpl implements PaymentService {
         return peopleRepository.findById(payment.getPeopleId())
                 .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + payment.getPeopleId() + " no existe.")))
                 .flatMap(people -> {
-                    if (!people.getTenantId().equals(payment.getTenantId())) {
-                        return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado."));
+                    if (people.getTenantId().longValue() != payment.getTenantId().longValue()) {
+                        return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado. (Persona: " + people.getTenantId() + ", Pago: " + payment.getTenantId() + ")"));
                     }
+                    System.out.println("DEBUG - Intentando guardar payment: " + payment);
                     return paymentRepository.save(payment).flatMap(this::enrich);
                 });
     }
@@ -149,8 +150,8 @@ public class PaymentServiceImpl implements PaymentService {
                     return peopleRepository.findById(targetPeopleId)
                             .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + targetPeopleId + " no existe.")))
                             .flatMap(people -> {
-                                if (!people.getTenantId().equals(targetTenantId)) {
-                                    return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado."));
+                                if (people.getTenantId().longValue() != targetTenantId.longValue()) {
+                                    return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado. (Persona: " + people.getTenantId() + ", Pago: " + targetTenantId + ")"));
                                 }
 
                                 // Solo sobreescribir si el valor entrante no es null
