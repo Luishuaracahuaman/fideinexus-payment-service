@@ -12,7 +12,7 @@ import org.springframework.data.relational.core.mapping.Table;
 import lombok.Data;
 
 @Data
-@Table("payment")
+@Table("finanzas")
 public class Payment {
 
     @Id
@@ -42,10 +42,19 @@ public class Payment {
     @Column("payment_method_id")
     private Integer paymentMethodId;
 
+    @Column("book_id")
+    private Integer bookId;
+
     // ── Relaciones enriquecidas (no se persisten en la tabla) ──────────────
     @Transient
     private Reason reason;
 
     @Transient
     private PaymentMethod paymentMethod;
+
+    @Transient
+    private People people;
+
+    @Transient
+    private BookDto book;
 }

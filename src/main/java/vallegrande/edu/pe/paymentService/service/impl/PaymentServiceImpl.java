@@ -5,11 +5,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import vallegrande.edu.pe.paymentService.client.BookClient;
 import vallegrande.edu.pe.paymentService.model.Payment;
 import vallegrande.edu.pe.paymentService.model.PaymentMethod;
 import vallegrande.edu.pe.paymentService.model.Reason;
+import vallegrande.edu.pe.paymentService.model.People;
 import vallegrande.edu.pe.paymentService.repository.PaymentMethodRepository;
 import vallegrande.edu.pe.paymentService.repository.PaymentRepository;
+import vallegrande.edu.pe.paymentService.repository.PeopleRepository;
 import vallegrande.edu.pe.paymentService.repository.ReasonRepository;
 import vallegrande.edu.pe.paymentService.service.PaymentService;
 
@@ -19,27 +22,58 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
-    private final PaymentRepository        paymentRepository;
-    private final ReasonRepository         reasonRepository;
-    private final PaymentMethodRepository  paymentMethodRepository;
+    private final PaymentRepository paymentRepository;
+    private final ReasonRepository reasonRepository;
+    private final PaymentMethodRepository paymentMethodRepository;
+    private final PeopleRepository peopleRepository;
+    private final BookClient bookClient;
 
-    // ── Enriquecimiento: agrega datos de reason y paymentMethod ──────────
+    // ── Enriquecimiento: agrega datos de reason, paymentMethod, people y book ──────────
     private Mono<Payment> enrich(Payment p) {
         Mono<Payment> enriched = Mono.just(p);
 
         if (p.getReasonId() != null) {
             enriched = enriched.flatMap(pay ->
                 reasonRepository.findById(pay.getReasonId())
-                    .doOnNext(pay::setReason)
-                    .thenReturn(pay)
+                    .map(reason -> {
+                        pay.setReason(reason);
+                        return pay;
+                    })
+                    .defaultIfEmpty(pay)
             );
         }
 
         if (p.getPaymentMethodId() != null) {
             enriched = enriched.flatMap(pay ->
                 paymentMethodRepository.findById(pay.getPaymentMethodId())
-                    .doOnNext(pay::setPaymentMethod)
-                    .thenReturn(pay)
+                    .map(method -> {
+                        pay.setPaymentMethod(method);
+                        return pay;
+                    })
+                    .defaultIfEmpty(pay)
+            );
+        }
+
+        if (p.getPeopleId() != null) {
+            enriched = enriched.flatMap(pay ->
+                peopleRepository.findById(pay.getPeopleId())
+                    .map(people -> {
+                        pay.setPeople(people);
+                        return pay;
+                    })
+                    .defaultIfEmpty(pay)
+            );
+        }
+
+        if (p.getBookId() != null) {
+            enriched = enriched.flatMap(pay ->
+                bookClient.findById(p.getBookId())
+                    .map(book -> {
+                        pay.setBook(book);
+                        return pay;
+                    })
+                    .onErrorResume(e -> Mono.just(pay)) // Si falla el cliente HTTP, devolvemos el pago sin libro
+                    .defaultIfEmpty(pay)
             );
         }
 
@@ -77,7 +111,9 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public Mono<Payment> save(Payment payment) {
-        payment.setCreatedAt(LocalDateTime.now());
+        if (payment.getId() == null || payment.getCreatedAt() == null) {
+            payment.setCreatedAt(LocalDateTime.now());
+        }
         if (payment.getEstado() == null || payment.getEstado().isBlank()) {
             payment.setEstado("P");
         }
@@ -88,23 +124,49 @@ public class PaymentServiceImpl implements PaymentService {
         if (payment.getPaymentMethod() != null && payment.getPaymentMethodId() == null) {
             payment.setPaymentMethodId(payment.getPaymentMethod().getId());
         }
-        return paymentRepository.save(payment).flatMap(this::enrich);
+
+        // Validación de Tenant y People
+        return peopleRepository.findById(payment.getPeopleId())
+                .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + payment.getPeopleId() + " no existe.")))
+                .flatMap(people -> {
+                    if (!people.getTenantId().equals(payment.getTenantId())) {
+                        return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado."));
+                    }
+                    return paymentRepository.save(payment).flatMap(this::enrich);
+                });
     }
 
     @Override
     @Transactional
     public Mono<Payment> update(Long id, Payment payment) {
-        return findById(id).flatMap(existing -> {
-            existing.setTenantId(payment.getTenantId());
-            existing.setPeopleId(payment.getPeopleId());
-            existing.setMonto(payment.getMonto());
-            existing.setFechaPago(payment.getFechaPago());
-            existing.setEstado(payment.getEstado());
-            existing.setReferencia(payment.getReferencia());
-            if (payment.getReasonId() != null)        existing.setReasonId(payment.getReasonId());
-            if (payment.getPaymentMethodId() != null) existing.setPaymentMethodId(payment.getPaymentMethodId());
-            return paymentRepository.save(existing).flatMap(this::enrich);
-        });
+        return paymentRepository.findById(id)
+                .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
+                .flatMap(existing -> {
+                    // Validar si el peopleId cambió o no
+                    Long targetPeopleId = payment.getPeopleId() != null ? payment.getPeopleId() : existing.getPeopleId();
+                    Long targetTenantId = payment.getTenantId() != null ? payment.getTenantId() : existing.getTenantId();
+
+                    return peopleRepository.findById(targetPeopleId)
+                            .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + targetPeopleId + " no existe.")))
+                            .flatMap(people -> {
+                                if (!people.getTenantId().equals(targetTenantId)) {
+                                    return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado."));
+                                }
+
+                                // Solo sobreescribir si el valor entrante no es null
+                                if (payment.getTenantId() != null)      existing.setTenantId(payment.getTenantId());
+                                if (payment.getPeopleId() != null)      existing.setPeopleId(payment.getPeopleId());
+                                if (payment.getMonto() != null)         existing.setMonto(payment.getMonto());
+                                if (payment.getFechaPago() != null)     existing.setFechaPago(payment.getFechaPago());
+                                if (payment.getEstado() != null)        existing.setEstado(payment.getEstado());
+                                if (payment.getReferencia() != null)    existing.setReferencia(payment.getReferencia());
+                                if (payment.getReasonId() != null)      existing.setReasonId(payment.getReasonId());
+                                if (payment.getPaymentMethodId() != null) existing.setPaymentMethodId(payment.getPaymentMethodId());
+                                if (payment.getBookId() != null)        existing.setBookId(payment.getBookId());
+
+                                return paymentRepository.save(existing).flatMap(this::enrich);
+                            });
+                });
     }
 
     @Override
@@ -123,7 +185,7 @@ public class PaymentServiceImpl implements PaymentService {
     public Mono<Void> delete(Long id) {
         return paymentRepository.findById(id)
                 .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
-                .flatMap(paymentRepository::delete);
+                .flatMap(existing -> paymentRepository.delete(existing).then());
     }
 
     // ── Catálogos ────────────────────────────────────────────────────────
