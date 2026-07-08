@@ -1,205 +1,304 @@
 package vallegrande.edu.pe.paymentService.service.impl;
 
-import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import vallegrande.edu.pe.paymentService.client.BookClient;
+import vallegrande.edu.pe.paymentService.client.PeopleClient;
+import vallegrande.edu.pe.paymentService.client.RequestClient;
+import vallegrande.edu.pe.paymentService.dto.CancelRequestDto;
 import vallegrande.edu.pe.paymentService.model.Payment;
-import vallegrande.edu.pe.paymentService.model.PaymentMethod;
-import vallegrande.edu.pe.paymentService.model.Reason;
-import vallegrande.edu.pe.paymentService.repository.PaymentMethodRepository;
+import vallegrande.edu.pe.paymentService.model.Payment.BookItem;
 import vallegrande.edu.pe.paymentService.repository.PaymentRepository;
-import vallegrande.edu.pe.paymentService.repository.PeopleRepository;
-import vallegrande.edu.pe.paymentService.repository.ReasonRepository;
 import vallegrande.edu.pe.paymentService.service.PaymentService;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final ReasonRepository reasonRepository;
-    private final PaymentMethodRepository paymentMethodRepository;
-    private final PeopleRepository peopleRepository;
     private final BookClient bookClient;
+    private final RequestClient requestClient;
+    private final PeopleClient peopleClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // ── Enriquecimiento: agrega datos de reason, paymentMethod, people y book ──────────
-    private Mono<Payment> enrich(Payment p) {
-        Mono<Payment> enriched = Mono.just(p);
-
-        if (p.getReasonId() != null) {
-            enriched = enriched.flatMap(pay ->
-                reasonRepository.findById(pay.getReasonId())
-                    .map(reason -> {
-                        pay.setReason(reason);
-                        return pay;
-                    })
-                    .defaultIfEmpty(pay)
-            );
-        }
-
-        if (p.getPaymentMethodId() != null) {
-            enriched = enriched.flatMap(pay ->
-                paymentMethodRepository.findById(pay.getPaymentMethodId())
-                    .map(method -> {
-                        pay.setPaymentMethod(method);
-                        return pay;
-                    })
-                    .defaultIfEmpty(pay)
-            );
-        }
-
-        if (p.getPeopleId() != null) {
-            enriched = enriched.flatMap(pay ->
-                peopleRepository.findById(pay.getPeopleId())
-                    .map(people -> {
-                        pay.setPeople(people);
-                        return pay;
-                    })
-                    .defaultIfEmpty(pay)
-            );
-        }
-
-        if (p.getBookId() != null) {
-            enriched = enriched.flatMap(pay ->
-                bookClient.findById(p.getBookId())
-                    .map(book -> {
-                        pay.setBook(book);
-                        return pay;
-                    })
-                    .onErrorResume(e -> Mono.just(pay)) // Si falla el cliente HTTP, devolvemos el pago sin libro
-                    .defaultIfEmpty(pay)
-            );
-        }
-
-        return enriched;
-    }
-
-    // ── CRUD ─────────────────────────────────────────────────────────────
+    // ── Consultas ─────────────────────────────────────────────────────────────
 
     @Override
-    @Transactional(readOnly = true)
     public Flux<Payment> findAll() {
-        return paymentRepository.findAll().flatMap(this::enrich);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Flux<Payment> findByTenantId(Long tenantId) {
-        return paymentRepository.findByTenantId(tenantId).flatMap(this::enrich);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Flux<Payment> findByTenantIdAndEstado(Long tenantId, String estado) {
-        return paymentRepository.findByTenantIdAndEstado(tenantId, estado).flatMap(this::enrich);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Mono<Payment> findById(Long id) {
-        return paymentRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
+        return paymentRepository.findAll()
+                .map(this::deserializeItems)
                 .flatMap(this::enrich);
     }
 
     @Override
-    @Transactional
-    public Mono<Payment> save(Payment payment) {
-        if (payment.getId() == null || payment.getCreatedAt() == null) {
-            payment.setCreatedAt(LocalDateTime.now());
-        }
-        if (payment.getEstado() == null || payment.getEstado().isBlank()) {
-            payment.setEstado("P");
-        }
-        // Extraer IDs de los objetos anidados (si vienen del frontend como objetos)
-        if (payment.getReason() != null && payment.getReasonId() == null) {
-            payment.setReasonId(payment.getReason().getId());
-        }
-        if (payment.getPaymentMethod() != null && payment.getPaymentMethodId() == null) {
-            payment.setPaymentMethodId(payment.getPaymentMethod().getId());
-        }
-
-        // Validación de Tenant y People
-        return peopleRepository.findById(payment.getPeopleId())
-                .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + payment.getPeopleId() + " no existe.")))
-                .flatMap(people -> {
-                    if (people.getTenantId().longValue() != payment.getTenantId().longValue()) {
-                        return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado. (Persona: " + people.getTenantId() + ", Pago: " + payment.getTenantId() + ")"));
-                    }
-                    System.out.println("DEBUG - Intentando guardar payment: " + payment);
-                    return paymentRepository.save(payment).flatMap(this::enrich);
-                });
+    public Mono<Payment> findById(Long id) {
+        return paymentRepository.findById(id)
+                .map(this::deserializeItems)
+                .flatMap(this::enrich);
     }
+
+    @Override
+    public Flux<Payment> findByTenant(Long tenantId) {
+        return paymentRepository.findByTenantId(tenantId)
+                .map(this::deserializeItems)
+                .flatMap(this::enrich);
+    }
+
+    @Override
+    public Flux<Payment> findByPeople(Long peopleId) {
+        return paymentRepository.findByPeopleId(peopleId)
+                .map(this::deserializeItems)
+                .flatMap(this::enrich);
+    }
+
+    // ── Creación ─────────────────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public Mono<Payment> create(Payment payment) {
+        validateOrigin(payment);
+        serializeItems(payment);
+
+        payment.setStatus("POR CONFIRMAR");
+        payment.setCreatedAt(LocalDateTime.now());
+        payment.setUpdatedAt(LocalDateTime.now());
+
+        return paymentRepository.save(payment)
+                .map(this::deserializeItems)
+                .flatMap(this::enrich);
+    }
+
+    // ── Actualización ─────────────────────────────────────────────────────────
 
     @Override
     @Transactional
     public Mono<Payment> update(Long id, Payment payment) {
         return paymentRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
                 .flatMap(existing -> {
-                    // Validar si el peopleId cambió o no
-                    Long targetPeopleId = payment.getPeopleId() != null ? payment.getPeopleId() : existing.getPeopleId();
-                    Long targetTenantId = payment.getTenantId() != null ? payment.getTenantId() : existing.getTenantId();
+                    if (!"POR CONFIRMAR".equals(existing.getStatus())) {
+                        return Mono.error(new IllegalStateException("Solo se pueden actualizar pagos en estado POR CONFIRMAR"));
+                    }
+                    validateOrigin(payment);
 
-                    return peopleRepository.findById(targetPeopleId)
-                            .switchIfEmpty(Mono.error(new RuntimeException("La persona con id " + targetPeopleId + " no existe.")))
-                            .flatMap(people -> {
-                                if (people.getTenantId().longValue() != targetTenantId.longValue()) {
-                                    return Mono.error(new RuntimeException("La persona no pertenece al tenant indicado. (Persona: " + people.getTenantId() + ", Pago: " + targetTenantId + ")"));
-                                }
+                    existing.setTenantId(payment.getTenantId());
+                    existing.setPeopleId(payment.getPeopleId());
+                    existing.setRequestId(payment.getRequestId());
+                    existing.setAmount(payment.getAmount());
+                    existing.setPaymentMethod(payment.getPaymentMethod());
+                    existing.setReference(payment.getReference());
+                    existing.setItems(payment.getItems());
+                    serializeItems(existing);
+                    existing.setUpdatedAt(LocalDateTime.now());
 
-                                // Solo sobreescribir si el valor entrante no es null
-                                if (payment.getTenantId() != null)      existing.setTenantId(payment.getTenantId());
-                                if (payment.getPeopleId() != null)      existing.setPeopleId(payment.getPeopleId());
-                                if (payment.getMonto() != null)         existing.setMonto(payment.getMonto());
-                                if (payment.getFechaPago() != null)     existing.setFechaPago(payment.getFechaPago());
-                                if (payment.getEstado() != null)        existing.setEstado(payment.getEstado());
-                                if (payment.getReferencia() != null)    existing.setReferencia(payment.getReferencia());
-                                if (payment.getReasonId() != null)      existing.setReasonId(payment.getReasonId());
-                                if (payment.getPaymentMethodId() != null) existing.setPaymentMethodId(payment.getPaymentMethodId());
-                                if (payment.getBookId() != null)        existing.setBookId(payment.getBookId());
-
-                                return paymentRepository.save(existing).flatMap(this::enrich);
-                            });
+                    return paymentRepository.save(existing)
+                            .map(this::deserializeItems)
+                            .flatMap(this::enrich);
                 });
+    }
+
+    // ── Transiciones de Estado ────────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public Mono<Payment> confirm(Long id, Long confirmedBy) {
+        return paymentRepository.findById(id)
+                .map(this::deserializeItems)
+                .flatMap(payment -> {
+                    if (!"POR CONFIRMAR".equals(payment.getStatus())) {
+                        return Mono.error(new IllegalStateException("El pago no está en estado POR CONFIRMAR"));
+                    }
+                    payment.setStatus("CONFIRMADO");
+                    payment.setConfirmedBy(confirmedBy);
+                    payment.setConfirmedAt(LocalDateTime.now());
+                    payment.setUpdatedAt(LocalDateTime.now());
+
+                    Mono<Payment> saveMono = paymentRepository.save(payment);
+
+                    if (payment.getItems() != null && !payment.getItems().isEmpty()) {
+                        List<Mono<Void>> decreaseOps = new ArrayList<>();
+                        for (BookItem item : payment.getItems()) {
+                            decreaseOps.add(
+                                bookClient.decreaseStock(item.getBookId(), item.getQuantity())
+                                    .doOnSuccess(v -> System.out.println(
+                                        "[STOCK] Descontado stock del libro " + item.getBookId()
+                                        + ", cantidad: " + item.getQuantity()))
+                                    .onErrorResume(e -> {
+                                        System.err.println(
+                                            "[STOCK ERROR] Fallo al restar stock del libro "
+                                            + item.getBookId() + " (qty=" + item.getQuantity() + "): "
+                                            + e.getClass().getSimpleName() + " - " + e.getMessage());
+                                        return Mono.error(new IllegalStateException("Bajo stock"));
+                                    }));
+                        }
+                        return Flux.concat(decreaseOps).then(saveMono);
+                    }
+
+                    return saveMono;
+                }).flatMap(this::enrich);
     }
 
     @Override
     @Transactional
-    public Mono<Payment> changeEstado(Long id, String estado) {
+    public Mono<Payment> cancel(Long id, CancelRequestDto dto) {
         return paymentRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
-                .flatMap(existing -> {
-                    existing.setEstado(estado);
-                    return paymentRepository.save(existing).flatMap(this::enrich);
-                });
+                .map(this::deserializeItems)
+                .flatMap(payment -> {
+                    if (!"POR CONFIRMAR".equals(payment.getStatus())) {
+                        return Mono.error(new IllegalStateException("El pago no está en estado POR CONFIRMAR"));
+                    }
+                    payment.setStatus("ANULADO");
+                    payment.setCancelReason(dto.getReason());
+                    payment.setUpdatedAt(LocalDateTime.now());
+                    return paymentRepository.save(payment);
+                }).flatMap(this::enrich);
     }
 
     @Override
     @Transactional
-    public Mono<Void> delete(Long id) {
+    public Mono<Payment> reject(Long id, CancelRequestDto dto) {
         return paymentRepository.findById(id)
-                .switchIfEmpty(Mono.error(new RuntimeException("Pago no encontrado con id: " + id)))
-                .flatMap(existing -> paymentRepository.delete(existing).then());
+                .map(this::deserializeItems)
+                .flatMap(payment -> {
+                    if (!"POR CONFIRMAR".equals(payment.getStatus())) {
+                        return Mono.error(new IllegalStateException("Solo se pueden rechazar pagos en estado POR CONFIRMAR"));
+                    }
+                    payment.setStatus("RECHAZADO");
+                    payment.setCancelReason(dto.getReason());
+                    payment.setUpdatedAt(LocalDateTime.now());
+                    return paymentRepository.save(payment);
+                }).flatMap(this::enrich);
     }
 
-    // ── Catálogos ────────────────────────────────────────────────────────
-
     @Override
-    @Transactional(readOnly = true)
-    public Flux<Reason> findAllReasons() {
-        return reasonRepository.findAll();
+    @Transactional
+    public Mono<Payment> refund(Long id, CancelRequestDto dto) {
+        return paymentRepository.findById(id)
+                .map(this::deserializeItems)
+                .flatMap(payment -> {
+                    if (!"CONFIRMADO".equals(payment.getStatus())) {
+                        return Mono.error(new IllegalStateException("Solo se pueden reembolsar pagos en estado CONFIRMADO"));
+                    }
+                    payment.setStatus("REEMBOLSADO");
+                    payment.setCancelReason(dto.getReason());
+                    payment.setUpdatedAt(LocalDateTime.now());
+
+                    Mono<Payment> saveMono = paymentRepository.save(payment);
+
+                    if (payment.getItems() != null && !payment.getItems().isEmpty()) {
+                        List<Mono<Void>> increaseOps = new ArrayList<>();
+                        for (BookItem item : payment.getItems()) {
+                            increaseOps.add(
+                                bookClient.increaseStock(item.getBookId(), item.getQuantity())
+                                    .doOnSuccess(v -> System.out.println(
+                                        "[STOCK] Restaurado stock del libro " + item.getBookId()
+                                        + ", cantidad: " + item.getQuantity()))
+                                    .onErrorResume(e -> {
+                                        System.err.println(
+                                            "[STOCK ERROR] Fallo al restaurar stock del libro "
+                                            + item.getBookId() + " (qty=" + item.getQuantity() + "): "
+                                            + e.getClass().getSimpleName() + " - " + e.getMessage());
+                                        return Mono.empty();
+                                    }));
+                        }
+                        return Flux.concat(increaseOps).then(saveMono);
+                    }
+
+                    return saveMono;
+                }).flatMap(this::enrich);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public Flux<PaymentMethod> findAllPaymentMethods() {
-        return paymentMethodRepository.findAll();
+    // ── Helpers privados ──────────────────────────────────────────────────────
+
+    private void validateOrigin(Payment payment) {
+        boolean hasRequest = payment.getRequestId() != null;
+        boolean hasItems = payment.getItems() != null && !payment.getItems().isEmpty();
+
+        if (hasRequest && hasItems) {
+            throw new IllegalArgumentException("El pago no puede tener a la vez una solicitud y libros.");
+        }
+        if (!hasRequest && !hasItems) {
+            throw new IllegalArgumentException("El pago debe estar asociado a una solicitud o a una venta de libros.");
+        }
+    }
+
+    private void serializeItems(Payment payment) {
+        if (payment.getItems() != null && !payment.getItems().isEmpty()) {
+            try {
+                payment.setItemsDb(objectMapper.writeValueAsString(payment.getItems()));
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Error al serializar los items del pago", e);
+            }
+        } else {
+            payment.setItemsDb(null);
+        }
+    }
+
+    private Payment deserializeItems(Payment payment) {
+        if (payment.getItemsDb() != null) {
+            try {
+                List<BookItem> items = objectMapper.readValue(payment.getItemsDb(), new TypeReference<List<BookItem>>() {});
+                payment.setItems(items);
+            } catch (JsonProcessingException e) {
+                System.err.println("Error al deserializar itemsDb: " + e.getMessage());
+            }
+        }
+        return payment;
+    }
+
+    // ── Enriquecimiento de datos ──────────────────────────────────────────────
+
+    private Mono<Payment> enrich(Payment payment) {
+        Mono<Payment> enriched = Mono.just(payment);
+
+        // Enriquecer Solicitud
+        if (payment.getRequestId() != null) {
+            enriched = enriched.flatMap(p -> requestClient.findById(p.getRequestId())
+                    .map(info -> { p.setRequest(info); return p; })
+                    .onErrorResume(e -> {
+                        System.err.println("Error obteniendo Request " + p.getRequestId() + ": " + e.getMessage());
+                        return Mono.just(p);
+                    }));
+        }
+
+        // Enriquecer Persona
+        if (payment.getPeopleId() != null) {
+            enriched = enriched.flatMap(p -> peopleClient.findById(p.getPeopleId())
+                    .map(info -> { p.setPeople(info); return p; })
+                    .onErrorResume(e -> {
+                        System.err.println("Error obteniendo People " + p.getPeopleId() + ": " + e.getMessage());
+                        return Mono.just(p);
+                    }));
+        }
+
+        // Enriquecer Ítems de Libros
+        enriched = enriched.flatMap(p -> {
+            if (p.getItems() != null && !p.getItems().isEmpty()) {
+                List<Mono<BookItem>> enrichedItems = new ArrayList<>();
+                for (BookItem item : p.getItems()) {
+                    enrichedItems.add(
+                            bookClient.findById(item.getBookId())
+                                    .map(bookInfo -> {
+                                        item.setBook(bookInfo);
+                                        return item;
+                                    })
+                                    .onErrorResume(e -> Mono.just(item)) // Ignorar si falla uno
+                    );
+                }
+                return Flux.merge(enrichedItems).collectList().map(list -> p);
+            }
+            return Mono.just(p);
+        });
+
+        return enriched;
     }
 }

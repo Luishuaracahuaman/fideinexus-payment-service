@@ -1,18 +1,23 @@
 package vallegrande.edu.pe.paymentService.model;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
+import vallegrande.edu.pe.paymentService.dto.BookSaleInfo;
+import vallegrande.edu.pe.paymentService.dto.PeopleInfo;
+import vallegrande.edu.pe.paymentService.dto.RequestInfo;
 
-import lombok.Data;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
-@Table("finanzas")
+@Table("payments")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Payment {
 
     @Id
@@ -24,37 +29,59 @@ public class Payment {
     @Column("people_id")
     private Long peopleId;
 
-    private BigDecimal monto;
+    @Column("request_id")
+    private Long requestId;
 
-    @Column("fecha_pago")
-    private LocalDate fechaPago;
+    private BigDecimal amount;
 
-    private String estado;
+    @Column("payment_method")
+    private String paymentMethod;
+
+    private String reference;
+
+    @Column("payment_date")
+    private LocalDateTime paymentDate;
+
+    // Columna en BD (texto JSON plano) - Ignorado en la respuesta JSON
+    @Column("items")
+    @JsonIgnore
+    private String itemsDb;
+
+    // Lista real que recibe/envía al frontend
+    @Transient
+    private List<BookItem> items;
+
+    private String status;
+
+    @Column("cancel_reason")
+    private String cancelReason;
+
+    @Column("confirmed_by")
+    private Long confirmedBy;
+
+    @Column("confirmed_at")
+    private LocalDateTime confirmedAt;
 
     @Column("created_at")
     private LocalDateTime createdAt;
 
-    private String referencia;
+    @Column("updated_at")
+    private LocalDateTime updatedAt;
 
-    @Column("reason_id")
-    private Integer reasonId;
-
-    @Column("payment_method_id")
-    private Integer paymentMethodId;
-
-    @Column("book_id")
-    private Integer bookId;
-
-    // ── Relaciones enriquecidas (no se persisten en la tabla) ──────────────
-    @Transient
-    private Reason reason;
+    // ── Transient: datos enriquecidos ────────────────────────────────────────
 
     @Transient
-    private PaymentMethod paymentMethod;
+    private RequestInfo request;
 
     @Transient
-    private People people;
+    private PeopleInfo people;
 
-    @Transient
-    private BookDto book;
+    // ── Clase Interna para los Items ─────────────────────────────────────────
+
+    @Data
+    public static class BookItem {
+        private Long bookId;
+        private Integer quantity;
+        private BookSaleInfo book; // Datos enriquecidos desde el MS de Books
+    }
 }

@@ -3,44 +3,42 @@ package vallegrande.edu.pe.paymentService.client;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import vallegrande.edu.pe.paymentService.model.BookDto;
+import vallegrande.edu.pe.paymentService.dto.BookSaleInfo;
 
 @Component
 public class BookClient {
 
     private final WebClient webClient;
 
-    public BookClient(WebClient.Builder builder, @Value("${external.services.books.url}") String booksUrl) {
-        this.webClient = builder.baseUrl(booksUrl).build();
+    public BookClient(WebClient.Builder builder, @Value("${external.services.books.url}") String url) {
+        this.webClient = builder.baseUrl(url).build();
     }
 
-    public Flux<BookDto> findAllActive() {
-        return webClient.get()
-                .retrieve()
-                .bodyToFlux(BookDto.class);
-    }
-
-    public Mono<BookDto> findById(Integer id) {
+    public Mono<BookSaleInfo> findById(Long id) {
         return webClient.get()
                 .uri("/{id}", id)
                 .retrieve()
-                .bodyToMono(BookDto.class);
+                .bodyToMono(BookSaleInfo.class);
     }
 
-    public Flux<BookDto> findByNivel(String nivel) {
-        return webClient.get()
-                .uri("/nivel/{nivel}", nivel)
+    public Mono<Void> decreaseStock(Long id, Integer quantity) {
+        return webClient.patch()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/{id}/decrease-stock")
+                        .queryParam("quantity", quantity)
+                        .build(id))
                 .retrieve()
-                .bodyToFlux(BookDto.class);
+                .bodyToMono(Void.class);
     }
 
-    public Flux<BookDto> findByGradoAndNivel(Integer grado, String nivel) {
-        return webClient.get()
-                .uri("/grado/{grado}/nivel/{nivel}", grado, nivel)
+    public Mono<Void> increaseStock(Long id, Integer quantity) {
+        return webClient.patch()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/{id}/increase-stock")
+                        .queryParam("quantity", quantity)
+                        .build(id))
                 .retrieve()
-                .bodyToFlux(BookDto.class);
+                .bodyToMono(Void.class);
     }
 }

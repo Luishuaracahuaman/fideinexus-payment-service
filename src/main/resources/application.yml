@@ -3,12 +3,12 @@ server:
 
 spring:
   r2dbc:
-    url: r2dbc:postgresql://ep-dark-water-aq88s0ca-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require
+    url: r2dbc:postgresql://ep-sweet-cherry-ac1jujjy-pooler.sa-east-1.aws.neon.tech/paymentsservice?sslmode=require&channel_binding=require
     username: neondb_owner
-    password: npg_qPKa5eZid8Jf
+    password: npg_JPQSp1e0TCj0
   sql:
     init:
-      mode: always
+      mode: never
   codec:
     max-in-memory-size: 20MB
 
@@ -28,4 +28,8 @@ springdoc:
 external:
   services:
     books:
-      url: http://localhost:8088/v1/books
+      url: https://lab.vallegrande.edu.pe/fideiNexus-books/v1/books
+    requests:
+      url: https://lab.vallegrande.edu.pe/fideiNexus-solicitud/v1/requests
+    people:
+      url: https://lab.vallegrande.edu.pe/fideiNexus-persona/v1/people

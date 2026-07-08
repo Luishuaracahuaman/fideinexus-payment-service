@@ -2,23 +2,28 @@ package vallegrande.edu.pe.paymentService.service;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import vallegrande.edu.pe.paymentService.dto.CancelRequestDto;
 import vallegrande.edu.pe.paymentService.model.Payment;
-import vallegrande.edu.pe.paymentService.model.PaymentMethod;
-import vallegrande.edu.pe.paymentService.model.Reason;
 
 public interface PaymentService {
 
-    // ── CRUD de Pagos ────────────────────────────────────────────────────
     Flux<Payment> findAll();
-    Flux<Payment> findByTenantId(Long tenantId);
-    Flux<Payment> findByTenantIdAndEstado(Long tenantId, String estado);
+    
     Mono<Payment> findById(Long id);
-    Mono<Payment> save(Payment payment);
+    
+    Flux<Payment> findByTenant(Long tenantId);
+    
+    Flux<Payment> findByPeople(Long peopleId);
+    
+    Mono<Payment> create(Payment payment);
+    
     Mono<Payment> update(Long id, Payment payment);
-    Mono<Payment> changeEstado(Long id, String estado);
-    Mono<Void>    delete(Long id);
+    
+    Mono<Payment> confirm(Long id, Long confirmedBy);
+    
+    Mono<Payment> cancel(Long id, CancelRequestDto cancelRequest);
 
-    // ── Catálogos ────────────────────────────────────────────────────────
-    Flux<Reason>        findAllReasons();
-    Flux<PaymentMethod> findAllPaymentMethods();
+    Mono<Payment> reject(Long id, CancelRequestDto dto);
+
+    Mono<Payment> refund(Long id, CancelRequestDto dto);
 }

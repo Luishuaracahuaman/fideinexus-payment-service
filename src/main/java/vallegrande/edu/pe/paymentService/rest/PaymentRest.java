@@ -1,90 +1,73 @@
 package vallegrande.edu.pe.paymentService.rest;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import vallegrande.edu.pe.paymentService.dto.CancelRequestDto;
 import vallegrande.edu.pe.paymentService.model.Payment;
-import vallegrande.edu.pe.paymentService.model.PaymentMethod;
-import vallegrande.edu.pe.paymentService.model.Reason;
 import vallegrande.edu.pe.paymentService.service.PaymentService;
 
+import java.util.Map;
+
 @RestController
-@RequestMapping("/finanzas")
+@RequestMapping("/payments")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class PaymentRest {
 
     private final PaymentService paymentService;
 
-    // ── Listar todos los pagos ───────────────────────────────────────────
     @GetMapping
     public Flux<Payment> findAll() {
         return paymentService.findAll();
     }
 
-    // ── Listar pagos por tenant (con filtro opcional de estado) ──────────
-    @GetMapping("/tenant/{tenantId}")
-    public Flux<Payment> findByTenantId(
-            @PathVariable Long tenantId,
-            @RequestParam(required = false) String estado) {
-        if (estado != null && !estado.isBlank()) {
-            return paymentService.findByTenantIdAndEstado(tenantId, estado);
-        }
-        return paymentService.findByTenantId(tenantId);
-    }
-
-    // ── Obtener un pago por ID ───────────────────────────────────────────
     @GetMapping("/{id}")
     public Mono<Payment> findById(@PathVariable Long id) {
         return paymentService.findById(id);
     }
-
-    // ── Crear un nuevo pago (TRANSACCIÓN) ────────────────────────────────
-    @PostMapping("/guardar")
-    @ResponseStatus(HttpStatus.CREATED)
-    public Mono<Payment> save(@RequestBody Payment payment) {
-        return paymentService.save(payment);
+    
+    @GetMapping("/tenant/{tenantId}")
+    public Flux<Payment> findByTenant(@PathVariable Long tenantId) {
+        return paymentService.findByTenant(tenantId);
+    }
+    
+    @GetMapping("/people/{peopleId}")
+    public Flux<Payment> findByPeople(@PathVariable Long peopleId) {
+        return paymentService.findByPeople(peopleId);
     }
 
-    // ── Actualizar un pago completo (TRANSACCIÓN) ────────────────────────
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Mono<Payment> save(@RequestBody Payment payment) {
+        return paymentService.create(payment);
+    }
+
     @PutMapping("/{id}")
     public Mono<Payment> update(@PathVariable Long id, @RequestBody Payment payment) {
         return paymentService.update(id, payment);
     }
 
-    // ── Cambiar estado de un pago: P -> A (Confirmado) (TRANSACCIÓN) ─────
-    @PatchMapping("/{id}/estado")
-    public Mono<Payment> changeEstado(@PathVariable Long id, @RequestParam String estado) {
-        return paymentService.changeEstado(id, estado);
+    @PatchMapping("/{id}/confirm")
+    public Mono<Payment> confirm(@PathVariable Long id, @RequestBody Map<String, Long> body) {
+        Long confirmedBy = body.get("confirmedBy");
+        return paymentService.confirm(id, confirmedBy);
+    }
+    
+    @PatchMapping("/{id}/cancel")
+    public Mono<Payment> cancel(@PathVariable Long id, @RequestBody CancelRequestDto cancelRequest) {
+        return paymentService.cancel(id, cancelRequest);
     }
 
-    // ── Eliminar un pago (TRANSACCIÓN) ───────────────────────────────────
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public Mono<Void> delete(@PathVariable Long id) {
-        return paymentService.delete(id);
+    @PatchMapping("/{id}/reject")
+    public Mono<Payment> reject(@PathVariable Long id, @RequestBody CancelRequestDto dto) {
+        return paymentService.reject(id, dto);
     }
 
-    // ── Catálogos ────────────────────────────────────────────────────────
-    @GetMapping("/razones")
-    public Flux<Reason> findAllReasons() {
-        return paymentService.findAllReasons();
-    }
-
-    @GetMapping("/metodos-pago")
-    public Flux<PaymentMethod> findAllPaymentMethods() {
-        return paymentService.findAllPaymentMethods();
+    @PatchMapping("/{id}/refund")
+    public Mono<Payment> refund(@PathVariable Long id, @RequestBody CancelRequestDto dto) {
+        return paymentService.refund(id, dto);
     }
 }
