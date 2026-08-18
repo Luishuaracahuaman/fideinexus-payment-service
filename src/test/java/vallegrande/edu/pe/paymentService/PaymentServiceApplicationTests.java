@@ -1,4 +1,4 @@
-package vallegrande.edu.pe.paymentservice;
+package vallegrande.edu.pe.paymentService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

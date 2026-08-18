@@ -2,20 +2,30 @@ server:
   port: 8086
 
 spring:
+  # Configuración de Keycloak para Resource Server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/realms/PRS
+
   r2dbc:
     url: r2dbc:postgresql://ep-sweet-cherry-ac1jujjy-pooler.sa-east-1.aws.neon.tech/paymentsservice?sslmode=require&channel_binding=require
     username: neondb_owner
     password: npg_JPQSp1e0TCj0
+    
   sql:
     init:
       mode: never
+      
   codec:
     max-in-memory-size: 20MB
 
 logging:
   level:
-    org.springframework.r2dbc: DEBUG
-    org.springframework.transaction: DEBUG
+    # Se agregaron corchetes y comillas para evitar la advertencia de caracteres especiales
+    "[org.springframework.r2dbc]": DEBUG
+    "[org.springframework.transaction]": DEBUG
 
 springdoc:
   api-docs:
