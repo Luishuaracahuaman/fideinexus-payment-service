@@ -9,9 +9,14 @@ import reactor.core.publisher.Mono;
 import vallegrande.edu.pe.paymentService.dto.CancelRequestDto;
 import vallegrande.edu.pe.paymentService.model.Payment;
 import vallegrande.edu.pe.paymentService.service.PaymentService;
+// 1. Asegúrate de tener estos imports arriba del todo en PaymentRest.java
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.ByteArrayResource;
+import vallegrande.edu.pe.paymentService.service.PaymentReportService; // Importa tu nuevo servicio
 
-import java.util.Map;
-
+// 2. Modifica la inyección de dependencias (agrégalo debajo de paymentService)
 @RestController
 @RequestMapping("/payments")
 @RequiredArgsConstructor
@@ -19,66 +24,48 @@ import java.util.Map;
 public class PaymentRest {
 
     private final PaymentService paymentService;
+    private final PaymentReportService paymentReportService; // <-- AQUÍ SE INYECTA EL SERVICIO DE REPORTES
 
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')") // Solo el admin ve todos los pagos
-    public Flux<Payment> findAll() {
-        return paymentService.findAll();
-    }
+    // ... (Aquí van tus otros endpoints que ya tenías: findAll, findById, save,
+    // etc.) ...
 
-    @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()") // Cualquier usuario logueado
-    public Mono<Payment> findById(@PathVariable Long id) {
-        return paymentService.findById(id);
-    }
+    // ==========================================
+    // 3. PEGA ESTOS ENDPOINTS AL FINAL (ANTES DE LA ÚLTIMA LLAVE '}')
+    // ==========================================
 
-    @GetMapping("/tenant/{tenantId}")
-    @PreAuthorize("isAuthenticated()")
-    public Flux<Payment> findByTenant(@PathVariable Long tenantId) {
-        return paymentService.findByTenant(tenantId);
-    }
-
-    @GetMapping("/people/{peopleId}")
-    @PreAuthorize("isAuthenticated()")
-    public Flux<Payment> findByPeople(@PathVariable Long peopleId) {
-        return paymentService.findByPeople(peopleId);
-    }
-
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('CAJERO') or hasRole('ADMIN')")
-    public Mono<Payment> save(@RequestBody Payment payment) {
-        return paymentService.create(payment);
-    }
-
-    @PutMapping("/{id}")
+    @GetMapping(value = "/reportes/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Payment> update(@PathVariable Long id, @RequestBody Payment payment) {
-        return paymentService.update(id, payment);
+    public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosPdf() {
+        return paymentReportService.generateSacramentosPdf()
+                .map(bytes -> ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_sacramentos.pdf")
+                        .body(new ByteArrayResource(bytes)));
     }
 
-    @PatchMapping("/{id}/confirm")
-    @PreAuthorize("hasRole('CAJERO') or hasRole('ADMIN')")
-    public Mono<Payment> confirm(@PathVariable Long id, @RequestBody Map<String, Long> body) {
-        Long confirmedBy = body.get("confirmedBy");
-        return paymentService.confirm(id, confirmedBy);
-    }
-
-    @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('CAJERO') or hasRole('ADMIN')")
-    public Mono<Payment> cancel(@PathVariable Long id, @RequestBody CancelRequestDto cancelRequest) {
-        return paymentService.cancel(id, cancelRequest);
-    }
-
-    @PatchMapping("/{id}/reject")
+    @GetMapping(value = "/reportes/sacramentos/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Payment> reject(@PathVariable Long id, @RequestBody CancelRequestDto dto) {
-        return paymentService.reject(id, dto);
+    public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosExcel() {
+        return paymentReportService.generateSacramentosExcel()
+                .map(bytes -> ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_sacramentos.xlsx")
+                        .body(new ByteArrayResource(bytes)));
     }
 
-    @PatchMapping("/{id}/refund")
+    @GetMapping(value = "/reportes/libros/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public Mono<Payment> refund(@PathVariable Long id, @RequestBody CancelRequestDto dto) {
-        return paymentService.refund(id, dto);
+    public Mono<ResponseEntity<ByteArrayResource>> exportBooksPdf() {
+        return paymentReportService.generateBooksPdf()
+                .map(bytes -> ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_libros.pdf")
+                        .body(new ByteArrayResource(bytes)));
+    }
+
+    @GetMapping(value = "/reportes/libros/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public Mono<ResponseEntity<ByteArrayResource>> exportBooksExcel() {
+        return paymentReportService.generateBooksExcel()
+                .map(bytes -> ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_libros.xlsx")
+                        .body(new ByteArrayResource(bytes)));
     }
 }

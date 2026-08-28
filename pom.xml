@@ -18,7 +18,7 @@
         <java.version>17</java.version>
     </properties>
 
-    <dependencies>
+<dependencies>
         <!-- WebFlux (programación reactiva) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -76,6 +76,20 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- OpenPDF para generar reportes en PDF -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>1.3.30</version>
+        </dependency>
+
+        <!-- Apache POI para generar reportes en Excel -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
         </dependency>
     </dependencies>
 

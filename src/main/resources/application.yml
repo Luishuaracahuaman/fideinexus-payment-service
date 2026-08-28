@@ -2,12 +2,11 @@ server:
   port: 8086
 
 spring:
-  # Configuración de Keycloak para Resource Server
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8090/realms/PRS
+          issuer-uri: https://lab.vallegrande.edu.pe/keycloak-security/realms/prs-realm
 
   r2dbc:
     url: r2dbc:postgresql://ep-sweet-cherry-ac1jujjy-pooler.sa-east-1.aws.neon.tech/paymentsservice?sslmode=require&channel_binding=require
