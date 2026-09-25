@@ -32,6 +32,12 @@ public class PaymentRest {
         // ==========================================
         // 3. PEGA ESTOS ENDPOINTS AL FINAL (ANTES DE LA ÚLTIMA LLAVE '}')
         // ==========================================
+        @GetMapping
+        // @PreAuthorize("hasRole('ADMIN')") // Descomenta esto si quieres seguridad, o
+        // déjalo así para que cualquiera con token entre
+        public Flux<Payment> findAll() {
+                return paymentService.findAll(); // Asumiendo que este método existe en tu PaymentService
+        }
 
         @GetMapping(value = "/reportes/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
         @PreAuthorize("hasRole('ADMIN')")
