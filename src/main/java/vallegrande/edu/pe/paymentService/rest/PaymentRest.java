@@ -23,49 +23,59 @@ import vallegrande.edu.pe.paymentService.service.PaymentReportService; // Import
 @CrossOrigin(origins = "*")
 public class PaymentRest {
 
-    private final PaymentService paymentService;
-    private final PaymentReportService paymentReportService; // <-- AQUÍ SE INYECTA EL SERVICIO DE REPORTES
+        private final PaymentService paymentService;
+        private final PaymentReportService paymentReportService; // <-- AQUÍ SE INYECTA EL SERVICIO DE REPORTES
 
-    // ... (Aquí van tus otros endpoints que ya tenías: findAll, findById, save,
-    // etc.) ...
+        // ... (Aquí van tus otros endpoints que ya tenías: findAll, findById, save,
+        // etc.) ...
 
-    // ==========================================
-    // 3. PEGA ESTOS ENDPOINTS AL FINAL (ANTES DE LA ÚLTIMA LLAVE '}')
-    // ==========================================
+        // ==========================================
+        // 3. PEGA ESTOS ENDPOINTS AL FINAL (ANTES DE LA ÚLTIMA LLAVE '}')
+        // ==========================================
+        @GetMapping
+        // @PreAuthorize("hasRole('ADMIN')") // Descomenta esto si quieres seguridad, o
+        // déjalo así para que cualquiera con token entre
+        public Flux<Payment> findAll() {
+                return paymentService.findAll(); // Asumiendo que este método existe en tu PaymentService
+        }
 
-    @GetMapping(value = "/reportes/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosPdf() {
-        return paymentReportService.generateSacramentosPdf()
-                .map(bytes -> ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_sacramentos.pdf")
-                        .body(new ByteArrayResource(bytes)));
-    }
+        @GetMapping(value = "/reportes/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+        @PreAuthorize("hasRole('ADMIN')")
+        public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosPdf() {
+                return paymentReportService.generateSacramentosPdf()
+                                .map(bytes -> ResponseEntity.ok()
+                                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                                "attachment; filename=reporte_sacramentos.pdf")
+                                                .body(new ByteArrayResource(bytes)));
+        }
 
-    @GetMapping(value = "/reportes/sacramentos/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosExcel() {
-        return paymentReportService.generateSacramentosExcel()
-                .map(bytes -> ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_sacramentos.xlsx")
-                        .body(new ByteArrayResource(bytes)));
-    }
+        @GetMapping(value = "/reportes/sacramentos/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+        @PreAuthorize("hasRole('ADMIN')")
+        public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosExcel() {
+                return paymentReportService.generateSacramentosExcel()
+                                .map(bytes -> ResponseEntity.ok()
+                                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                                "attachment; filename=reporte_sacramentos.xlsx")
+                                                .body(new ByteArrayResource(bytes)));
+        }
 
-    @GetMapping(value = "/reportes/libros/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public Mono<ResponseEntity<ByteArrayResource>> exportBooksPdf() {
-        return paymentReportService.generateBooksPdf()
-                .map(bytes -> ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_libros.pdf")
-                        .body(new ByteArrayResource(bytes)));
-    }
+        @GetMapping(value = "/reportes/libros/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+        @PreAuthorize("hasRole('ADMIN')")
+        public Mono<ResponseEntity<ByteArrayResource>> exportBooksPdf() {
+                return paymentReportService.generateBooksPdf()
+                                .map(bytes -> ResponseEntity.ok()
+                                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                                "attachment; filename=reporte_libros.pdf")
+                                                .body(new ByteArrayResource(bytes)));
+        }
 
-    @GetMapping(value = "/reportes/libros/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-    public Mono<ResponseEntity<ByteArrayResource>> exportBooksExcel() {
-        return paymentReportService.generateBooksExcel()
-                .map(bytes -> ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reporte_libros.xlsx")
-                        .body(new ByteArrayResource(bytes)));
-    }
+        @GetMapping(value = "/reportes/libros/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+        @PreAuthorize("hasRole('ADMIN')")
+        public Mono<ResponseEntity<ByteArrayResource>> exportBooksExcel() {
+                return paymentReportService.generateBooksExcel()
+                                .map(bytes -> ResponseEntity.ok()
+                                                .header(HttpHeaders.CONTENT_DISPOSITION,
+                                                                "attachment; filename=reporte_libros.xlsx")
+                                                .body(new ByteArrayResource(bytes)));
+        }
 }
