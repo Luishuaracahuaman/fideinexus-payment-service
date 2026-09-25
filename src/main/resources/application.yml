@@ -15,7 +15,7 @@ spring:
     
   sql:
     init:
-      mode: never
+      mode: always
       
   codec:
     max-in-memory-size: 20MB
