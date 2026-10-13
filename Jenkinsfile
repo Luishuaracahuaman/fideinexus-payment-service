@@ -37,7 +37,7 @@ stage('SonarQube Analysis') {
             }
         }
 
-    post {
+post {
         success {
             slackSend(channel: '#devops-pagos', 
                       color: 'good', 
