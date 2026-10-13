@@ -4,27 +4,26 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Descarga el código desde tu repositorio de GitHub
                 checkout scm
             }
         }
 
         stage('Build & Unit Tests') {
             steps {
-                // Compila el proyecto Java Spring Boot y ejecuta las pruebas
                 echo 'Compilando el microservicio vg-ms-paymentService...'
-                if (isUnix()) {
-                    sh 'chmod +x mvnw'
-                    sh './mvnw clean test'
-                } else {
-                    bat 'mvnw.cmd clean test'
+                script {
+                    if (isUnix()) {
+                        sh 'chmod +x mvnw'
+                        sh './mvnw clean test'
+                    } else {
+                        bat 'mvnw.cmd clean test'
+                    }
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                // Aquí agregaremos el comando de SonarQube en el siguiente paso de tu tarea
                 echo 'Análisis de SonarQube pendiente de configurar...'
             }
         }
