@@ -24,7 +24,16 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo 'Análisis de SonarQube pendiente de configurar...'
+                echo 'Ejecutando el análisis de SonarQube...'
+                withSonarQubeEnv('sonar-server') {
+                    script {
+                        if (isUnix()) {
+                            sh './mvnw sonar:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                        } else {
+                            bat 'mvnw.cmd sonar:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                        }
+                    }
+                }
             }
         }
     }
@@ -33,7 +42,7 @@ pipeline {
         success {
             slackSend(channel: '#devops-pagos', 
                       color: 'good', 
-                      message: "✅ SUCCESS: El pipeline de vg-ms-paymentService se ejecutó correctamente. Build #${env.BUILD_NUMBER}")
+                      message: "✅ SUCCESS: El pipeline de vg-ms-paymentService se ejecutó correctamente con análisis de SonarQube. Build #${env.BUILD_NUMBER}")
         }
         failure {
             slackSend(channel: '#devops-pagos', 
