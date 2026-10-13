@@ -28,9 +28,9 @@ pipeline {
                 withSonarQubeEnv('sonar-server') {
                     script {
                         if (isUnix()) {
-                            sh './mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                            sh './mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentServic -Dsonar.projectName=vg-ms-paymentServic -Dsonar.token=$SONAR_AUTH_TOKEN'
                         } else {
-                            bat 'mvnw.cmd org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                            bat 'mvnw.cmd org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentServic -Dsonar.projectName=vg-ms-paymentServic -Dsonar.token=%SONAR_AUTH_TOKEN%'
                         }
                     }
                 }
