@@ -22,21 +22,20 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+stage('SonarQube Analysis') {
             steps {
                 echo 'Ejecutando el análisis de SonarQube...'
                 withSonarQubeEnv('sonar-server') {
                     script {
                         if (isUnix()) {
-                            sh './mvnw sonar:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                            sh './mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
                         } else {
-                            bat 'mvnw.cmd sonar:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
+                            bat 'mvnw.cmd org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=vg-ms-paymentService -Dsonar.projectName=vg-ms-paymentService'
                         }
                     }
                 }
             }
         }
-    }
 
     post {
         success {
