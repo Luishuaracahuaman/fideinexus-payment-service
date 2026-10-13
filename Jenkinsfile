@@ -22,7 +22,7 @@ pipeline {
             }
         }
 
-stage('SonarQube Analysis') {
+        stage('SonarQube Analysis') {
             steps {
                 echo 'Ejecutando el análisis de SonarQube...'
                 withSonarQubeEnv('sonar-server') {
@@ -36,8 +36,9 @@ stage('SonarQube Analysis') {
                 }
             }
         }
+    }
 
-post {
+    post {
         success {
             slackSend(channel: '#devops-pagos', 
                       color: 'good', 
