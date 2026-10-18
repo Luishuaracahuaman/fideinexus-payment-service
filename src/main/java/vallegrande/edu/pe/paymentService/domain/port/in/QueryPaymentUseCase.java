@@ -23,4 +23,7 @@ public interface QueryPaymentUseCase {
 
     /** Busca todos los pagos asociados a una persona */
     Flux<Payment> findByPeopleId(Long peopleId);
+
+    /** Busca los pagos filtrados por estado (ej: PENDING, COMPLETED, CANCELLED) */
+    Flux<Payment> findByStatus(String status);
 }

@@ -71,6 +71,15 @@ public class PaymentPersistenceAdapter implements PaymentRepositoryPort {
                 .map(this::toDomain);
     }
 
+    @Override
+    public Flux<Payment> findByStatus(PaymentStatus status) {
+        if (status == null) {
+            return Flux.empty();
+        }
+        return paymentJpaRepository.findByStatus(status.toDbValue())
+                .map(this::toDomain);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Mapeo: Dominio (Payment) → Entidad de Persistencia (PaymentEntity)
     // ─────────────────────────────────────────────────────────────────────────

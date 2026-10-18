@@ -9,6 +9,7 @@ import vallegrande.edu.pe.paymentService.domain.model.Payment;
 import vallegrande.edu.pe.paymentService.domain.port.in.CompletePaymentUseCase;
 import vallegrande.edu.pe.paymentService.domain.port.in.CreatePaymentUseCase;
 import vallegrande.edu.pe.paymentService.domain.port.in.QueryPaymentUseCase;
+import vallegrande.edu.pe.paymentService.domain.port.in.UpdatePaymentUseCase;
 import vallegrande.edu.pe.paymentService.domain.port.out.PaymentRepositoryPort;
 import vallegrande.edu.pe.paymentService.domain.vo.PaymentStatus;
 
@@ -28,7 +29,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePaymentUseCase, QueryPaymentUseCase {
+public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePaymentUseCase, QueryPaymentUseCase, UpdatePaymentUseCase {
 
     private final PaymentRepositoryPort paymentRepositoryPort;
 
@@ -172,6 +173,87 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
     @Override
     public Flux<Payment> findByPeopleId(Long peopleId) {
         return paymentRepositoryPort.findByPersonaId(peopleId);
+    }
+
+    @Override
+    public Flux<Payment> findByStatus(String status) {
+        PaymentStatus paymentStatus = PaymentStatus.fromString(status);
+        return paymentRepositoryPort.findByStatus(paymentStatus);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CASO DE USO 4: Edición segura de datos de formulario y estado
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Override
+    public Mono<Payment> updatePayment(Long id, Payment updates) {
+        if (updates == null) {
+            return Mono.error(new IllegalArgumentException("Los datos de actualización no pueden ser nulos."));
+        }
+
+        return paymentRepositoryPort.findById(id)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("No se encontró el pago con ID: " + id)))
+                .flatMap(existing -> {
+                    // 1. Modificar únicamente los datos editados en el formulario (no nulos)
+                    if (updates.getMonto() != null) {
+                        if (updates.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+                            return Mono.error(new IllegalArgumentException("El monto del pago debe ser mayor a cero."));
+                        }
+                        existing.setMonto(updates.getMonto());
+                    }
+
+                    if (updates.getPersonaId() != null) {
+                        existing.setPersonaId(updates.getPersonaId());
+                    }
+
+                    if (updates.getRequestReferenceId() != null) {
+                        existing.setRequestReferenceId(updates.getRequestReferenceId());
+                    }
+
+                    if (updates.getMetodoPago() != null && !updates.getMetodoPago().isBlank()) {
+                        existing.setMetodoPago(updates.getMetodoPago().trim().toUpperCase());
+                    }
+
+                    if (updates.getReference() != null) {
+                        existing.setReference(updates.getReference());
+                    }
+
+                    if (updates.getTenantId() != null) {
+                        existing.setTenantId(updates.getTenantId());
+                    }
+
+                    if (updates.getCancelReason() != null) {
+                        existing.setCancelReason(updates.getCancelReason());
+                    }
+
+                    if (updates.getConfirmedBy() != null) {
+                        existing.setConfirmedBy(updates.getConfirmedBy());
+                    }
+
+                    if (updates.getItems() != null && !updates.getItems().isEmpty()) {
+                        existing.setItems(updates.getItems());
+                    }
+
+                    // 2. Modificar el estado si fue enviado en el formulario
+                    if (updates.getStatus() != null) {
+                        existing.setStatus(updates.getStatus());
+
+                        if (updates.getStatus() == PaymentStatus.COMPLETED) {
+                            if (existing.getValidationDate() == null) {
+                                existing.setValidationDate(LocalDateTime.now());
+                            }
+                            if (existing.getConfirmedAt() == null) {
+                                existing.setConfirmedAt(LocalDateTime.now());
+                            }
+                        }
+                    }
+
+                    existing.setUpdatedAt(LocalDateTime.now());
+
+                    return paymentRepositoryPort.save(existing);
+                })
+                .doOnSuccess(saved -> log.info("[PAYMENT] Pago con ID={} actualizado exitosamente. status={}", id, saved.getStatus()))
+                .doOnError(err -> log.warn("[PAYMENT] Error al actualizar pago con ID={}: {}", id, err.getMessage()));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

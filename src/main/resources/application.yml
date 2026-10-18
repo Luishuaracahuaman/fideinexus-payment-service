@@ -9,13 +9,18 @@ spring:
           issuer-uri: https://lab.vallegrande.edu.pe/keycloak-security/realms/prs-realm
 
   r2dbc:
-    url: r2dbc:postgresql://ep-sweet-cherry-ac1jujjy-pooler.sa-east-1.aws.neon.tech/paymentsservice?sslmode=require&channel_binding=require
+    url: r2dbc:postgresql://ep-rapid-credit-ap5dvsu1-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
     username: neondb_owner
-    password: npg_JPQSp1e0TCj0
+    password: npg_TqjhePp7nyU0
+    pool:
+      enabled: true
+      max-idle-time: 30s
+      max-life-time: 5m
+      validation-query: SELECT 1
     
   sql:
     init:
-      mode: always
+      mode: never
       
   codec:
     max-in-memory-size: 20MB

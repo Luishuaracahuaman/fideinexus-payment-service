@@ -17,19 +17,18 @@ public enum PaymentStatus {
     CANCELLED,
     REFUNDED,
     REJECTED;
-
     /**
-     * Convierte valores string (incluyendo nombres legacy) al Enum del dominio.
+     * Convierte valores string (incluyendo nombres en español y legacy) al Enum del dominio.
      */
     public static PaymentStatus fromString(String value) {
-        if (value == null) return PENDING;
-        return switch (value.toUpperCase().replace(" ", "_")) {
-            case "POR_CONFIRMAR", "PENDING"   -> PENDING;
-            case "CONFIRMADO",   "COMPLETED"  -> COMPLETED;
-            case "FALLIDO",      "FAILED"     -> FAILED;
-            case "ANULADO",      "CANCELLED"  -> CANCELLED;
-            case "REEMBOLSADO",  "REFUNDED"   -> REFUNDED;
-            case "RECHAZADO",    "REJECTED"   -> REJECTED;
+        if (value == null || value.isBlank()) return PENDING;
+        return switch (value.toUpperCase().trim().replace(" ", "_")) {
+            case "PENDING", "PENDIENTE", "PENDIENTES", "POR_CONFIRMAR" -> PENDING;
+            case "COMPLETED", "COMPLETADO", "COMPLETADOS", "PAGADO", "PAGADOS", "CONFIRMADO", "CONFIRMADOS" -> COMPLETED;
+            case "CANCELLED", "CANCELED", "CANCELADO", "CANCELADOS", "ANULADO", "ANULADOS" -> CANCELLED;
+            case "FAILED", "FALLIDO", "FALLIDOS" -> FAILED;
+            case "REFUNDED", "REEMBOLSADO", "REEMBOLSADOS" -> REFUNDED;
+            case "REJECTED", "RECHAZADO", "RECHAZADOS" -> REJECTED;
             default -> PENDING;
         };
     }

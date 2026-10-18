@@ -11,9 +11,11 @@ import vallegrande.edu.pe.paymentService.domain.model.Payment;
 import vallegrande.edu.pe.paymentService.domain.port.in.CompletePaymentUseCase;
 import vallegrande.edu.pe.paymentService.domain.port.in.CreatePaymentUseCase;
 import vallegrande.edu.pe.paymentService.domain.port.in.QueryPaymentUseCase;
+import vallegrande.edu.pe.paymentService.domain.port.in.UpdatePaymentUseCase;
 import vallegrande.edu.pe.paymentService.infrastructure.adapter.in.rest.dto.CompletePaymentRequest;
 import vallegrande.edu.pe.paymentService.infrastructure.adapter.in.rest.dto.CreatePaymentRequest;
 import vallegrande.edu.pe.paymentService.infrastructure.adapter.in.rest.dto.ReasonRequest;
+import vallegrande.edu.pe.paymentService.infrastructure.adapter.in.rest.dto.UpdatePaymentRequest;
 
 /**
  * Adaptador de Entrada REST (Driving Adapter).
@@ -35,6 +37,7 @@ public class PaymentController {
     private final CreatePaymentUseCase createPaymentUseCase;
     private final CompletePaymentUseCase completePaymentUseCase;
     private final QueryPaymentUseCase queryPaymentUseCase;
+    private final UpdatePaymentUseCase updatePaymentUseCase;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. ENDPOINT: Centralizador - Registrar pago inicial (Otros microservicios)
@@ -86,8 +89,35 @@ public class PaymentController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
-    public Flux<Payment> findAll() {
+    public Flux<Payment> findAll(@RequestParam(required = false) String status) {
+        if (status != null && !status.isBlank()) {
+            return queryPaymentUseCase.findByStatus(status);
+        }
         return queryPaymentUseCase.findAll();
+    }
+
+    @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Flux<Payment> findByStatus(@PathVariable String status) {
+        return queryPaymentUseCase.findByStatus(status);
+    }
+
+    @GetMapping("/completed")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Flux<Payment> findCompletedPayments() {
+        return queryPaymentUseCase.findByStatus("COMPLETED");
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Flux<Payment> findPendingPayments() {
+        return queryPaymentUseCase.findByStatus("PENDING");
+    }
+
+    @GetMapping("/cancelled")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Flux<Payment> findCancelledPayments() {
+        return queryPaymentUseCase.findByStatus("CANCELLED");
     }
 
     @GetMapping("/persona/{personaId}")
@@ -146,6 +176,30 @@ public class PaymentController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // 5. ENDPOINT: Editar pago existente (solo datos enviados en el formulario y estado)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Mono<ResponseEntity<Payment>> updatePayment(
+            @PathVariable Long id,
+            @RequestBody UpdatePaymentRequest request) {
+        Payment domainUpdates = mapUpdateToDomain(request);
+        return updatePaymentUseCase.updatePayment(id, domainUpdates)
+                .map(ResponseEntity::ok)
+                .onErrorResume(IllegalArgumentException.class, e -> Mono.just(ResponseEntity.badRequest().build()))
+                .onErrorResume(IllegalStateException.class, e -> Mono.just(ResponseEntity.badRequest().build()));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
+    public Mono<ResponseEntity<Payment>> patchPayment(
+            @PathVariable Long id,
+            @RequestBody UpdatePaymentRequest request) {
+        return updatePayment(id, request);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Mapeo: DTO HTTP → Modelo de Dominio puro
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -156,6 +210,24 @@ public class PaymentController {
         payment.setRequestReferenceId(request.getRequestReferenceId() != null ? request.getRequestReferenceId() : request.getRequestId());
         payment.setMonto(request.getMonto() != null ? request.getMonto() : request.getAmount());
         payment.setItems(request.getItems());
+        return payment;
+    }
+
+    private Payment mapUpdateToDomain(UpdatePaymentRequest request) {
+        if (request == null) return null;
+        Payment payment = new Payment();
+        payment.setMonto(request.getMonto() != null ? request.getMonto() : request.getAmount());
+        payment.setPersonaId(request.getPersonaId() != null ? request.getPersonaId() : request.getPeopleId());
+        payment.setRequestReferenceId(request.getRequestReferenceId() != null ? request.getRequestReferenceId() : request.getRequestId());
+        payment.setMetodoPago(request.getMetodoPago() != null ? request.getMetodoPago() : request.getPaymentMethod());
+        payment.setReference(request.getReference());
+        payment.setTenantId(request.getTenantId());
+        payment.setCancelReason(request.getCancelReason());
+        payment.setConfirmedBy(request.getConfirmedBy());
+        payment.setItems(request.getItems());
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            payment.setStatus(vallegrande.edu.pe.paymentService.domain.vo.PaymentStatus.fromString(request.getStatus()));
+        }
         return payment;
     }
 }

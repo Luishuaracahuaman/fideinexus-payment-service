@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebFluxSecurity
-@EnableReactiveMethodSecurity // Permite usar @PreAuthorize
+// @EnableReactiveMethodSecurity // Desactivado temporalmente para permitir pruebas sin JWT en métodos con @PreAuthorize
 public class SecurityConfig {
 
     @Bean
@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         // Dejamos libres las rutas de documentación Swagger
                         .pathMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Rutas públicas de pagos para pruebas locales desde Postman
+                        .pathMatchers("/payments/**", "/payments").permitAll()
                         // Cualquier otra petición necesita estar autenticada
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -16,9 +16,9 @@ CREATE TABLE payments (
 
     -- Información del pago
     amount NUMERIC(10,2) NOT NULL,
-    payment_method VARCHAR(30) NOT NULL,
+    payment_method VARCHAR(30),
     reference VARCHAR(150),
-    payment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Guardamos los items de libros como JSON texto
     items TEXT,

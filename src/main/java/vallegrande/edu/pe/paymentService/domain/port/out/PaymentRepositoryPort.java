@@ -3,6 +3,7 @@ package vallegrande.edu.pe.paymentService.domain.port.out;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import vallegrande.edu.pe.paymentService.domain.model.Payment;
+import vallegrande.edu.pe.paymentService.domain.vo.PaymentStatus;
 
 /**
  * Puerto de Salida (Driven Port) para persistencia reactiva.
@@ -55,5 +56,14 @@ public interface PaymentRepositoryPort {
 
     default Flux<Payment> findByRequestId(Long requestId) {
         return findByRequestReferenceId(requestId);
+    }
+
+    /**
+     * Busca los pagos según su estado de ciclo de vida (ej: PENDING, COMPLETED, CANCELLED).
+     */
+    Flux<Payment> findByStatus(PaymentStatus status);
+
+    default Flux<Payment> findByStatus(String status) {
+        return findByStatus(PaymentStatus.fromString(status));
     }
 }
