@@ -1,4 +1,4 @@
-package vallegrande.edu.pe.paymentService.service;
+package vallegrande.edu.pe.paymentService.infrastructure.service;
 
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
@@ -7,30 +7,44 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import vallegrande.edu.pe.paymentService.model.Payment;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Cell;
+import vallegrande.edu.pe.paymentService.domain.model.Payment;
+import vallegrande.edu.pe.paymentService.domain.port.in.QueryPaymentUseCase;
+import vallegrande.edu.pe.paymentService.domain.vo.PaymentStatus;
+import vallegrande.edu.pe.paymentService.infrastructure.adapter.out.enrichment.PaymentEnrichmentService;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 
+/**
+ * Servicio de infraestructura para la generación de reportes de pagos.
+ *
+ * Ubicado en infraestructura porque depende de librerías externas
+ * (OpenPDF, Apache POI) que son detalles tecnológicos, no de negocio.
+ *
+ * Usa el puerto de entrada QueryPaymentUseCase para obtener los datos,
+ * manteniendo la inversión de dependencias.
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentReportService {
 
-    private final PaymentService paymentService;
+    private final QueryPaymentUseCase queryPaymentUseCase;
+    private final PaymentEnrichmentService enrichmentService;
 
-    // ====================================================================
+    // ════════════════════════════════════════════════════════════════════════
     // REPORTES DE SACRAMENTOS (Registros Parroquiales)
-    // ====================================================================
+    // ════════════════════════════════════════════════════════════════════════
 
     public Mono<byte[]> generateSacramentosPdf() {
-        return paymentService.findAll()
-                .filter(p -> p.getRequestId() != null) // Solo pagos con solicitud
+        return queryPaymentUseCase.findAll()
+                .filter(p -> p.getRequestId() != null)
+                .flatMap(enrichmentService::enrich)
                 .collectList()
                 .flatMap(payments -> Mono.fromCallable(() -> {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -46,9 +60,9 @@ public class PaymentReportService {
 
                     PdfPTable table = new PdfPTable(6);
                     table.setWidthPercentage(100);
-                    table.setWidths(new float[] { 1.5f, 3.5f, 2.5f, 2f, 2f, 1.5f });
+                    table.setWidths(new float[]{1.5f, 3.5f, 2.5f, 2f, 2f, 1.5f});
 
-                    String[] headers = { "Código", "Nombre Completo", "Sacramento", "Fecha", "Estado", "Monto (S/)" };
+                    String[] headers = {"Código", "Nombre Completo", "Sacramento", "Fecha", "Estado", "Monto (S/)"};
                     Font headFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
                     for (String header : headers) {
                         PdfPCell cell = new PdfPCell(new Phrase(header, headFont));
@@ -63,45 +77,39 @@ public class PaymentReportService {
 
                     for (Payment p : payments) {
                         table.addCell(new PdfPCell(new Phrase("PAG-" + p.getId(), bodyFont)));
-                        String persona = (p.getPeople() != null)
-                                ? p.getPeople().getNombre() + " " + p.getPeople().getApellido()
-                                : "N/A";
+                        String persona = (p.getPeopleId() != null) ? "Persona #" + p.getPeopleId() : "N/A";
                         table.addCell(new PdfPCell(new Phrase(persona, bodyFont)));
-                        String tipo = (p.getRequest() != null && p.getRequest().getType() != null)
-                                ? p.getRequest().getType()
-                                : "Sacramento";
-                        table.addCell(new PdfPCell(new Phrase(tipo, bodyFont)));
+                        table.addCell(new PdfPCell(new Phrase("Sacramento", bodyFont)));
                         table.addCell(new PdfPCell(new Phrase(
                                 p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "",
                                 bodyFont)));
-                        table.addCell(new PdfPCell(new Phrase(p.getStatus(), bodyFont)));
-                        table.addCell(new PdfPCell(
-                                new Phrase(p.getAmount() != null ? p.getAmount().toString() : "0.00", bodyFont)));
+                        table.addCell(new PdfPCell(new Phrase(
+                                p.getStatus() != null ? p.getStatus().name() : "", bodyFont)));
+                        table.addCell(new PdfPCell(new Phrase(
+                                p.getAmount() != null ? p.getAmount().toString() : "0.00", bodyFont)));
 
-                        if ("CONFIRMADO".equals(p.getStatus()) && p.getAmount() != null) {
+                        if (PaymentStatus.COMPLETED.equals(p.getStatus()) && p.getAmount() != null) {
                             total += p.getAmount().doubleValue();
                         }
                     }
                     document.add(table);
-
                     document.add(Chunk.NEWLINE);
-                    Paragraph summary = new Paragraph("Total Recaudado (S/.): " + String.format("%.2f", total),
-                            titleFont);
+                    Paragraph summary = new Paragraph("Total Recaudado (S/.): " + String.format("%.2f", total), titleFont);
                     summary.setAlignment(Element.ALIGN_RIGHT);
                     document.add(summary);
-
                     document.close();
                     return out.toByteArray();
                 }).subscribeOn(Schedulers.boundedElastic()));
     }
 
     public Mono<byte[]> generateSacramentosExcel() {
-        return paymentService.findAll()
+        return queryPaymentUseCase.findAll()
                 .filter(p -> p.getRequestId() != null)
+                .flatMap(enrichmentService::enrich)
                 .collectList()
                 .flatMap(payments -> Mono.fromCallable(() -> {
                     try (Workbook workbook = new XSSFWorkbook();
-                            ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                         ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                         Sheet sheet = workbook.createSheet("Sacramentos");
 
                         CellStyle headerStyle = workbook.createCellStyle();
@@ -113,8 +121,7 @@ public class PaymentReportService {
                         headerStyle.setFont(font);
 
                         Row headerRow = sheet.createRow(0);
-                        String[] columns = { "Código", "Nombre Completo", "Sacramento", "Fecha", "Estado",
-                                "Monto (S/)" };
+                        String[] columns = {"Código", "Nombre Completo", "Sacramento", "Fecha", "Estado", "Monto (S/)"};
                         for (int i = 0; i < columns.length; i++) {
                             Cell cell = headerRow.createCell(i);
                             cell.setCellValue(columns[i]);
@@ -125,36 +132,28 @@ public class PaymentReportService {
                         for (Payment p : payments) {
                             Row row = sheet.createRow(rowIdx++);
                             row.createCell(0).setCellValue("PAG-" + p.getId());
-                            String persona = (p.getPeople() != null)
-                                    ? p.getPeople().getNombre() + " " + p.getPeople().getApellido()
-                                    : "N/A";
-                            row.createCell(1).setCellValue(persona);
-                            String tipo = (p.getRequest() != null && p.getRequest().getType() != null)
-                                    ? p.getRequest().getType()
-                                    : "Sacramento";
-                            row.createCell(2).setCellValue(tipo);
-                            row.createCell(3).setCellValue(
-                                    p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "");
-                            row.createCell(4).setCellValue(p.getStatus());
-                            if (p.getAmount() != null)
-                                row.createCell(5).setCellValue(p.getAmount().doubleValue());
+                            row.createCell(1).setCellValue(p.getPeopleId() != null ? "Persona #" + p.getPeopleId() : "N/A");
+                            row.createCell(2).setCellValue("Sacramento");
+                            row.createCell(3).setCellValue(p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "");
+                            row.createCell(4).setCellValue(p.getStatus() != null ? p.getStatus().name() : "");
+                            if (p.getAmount() != null) row.createCell(5).setCellValue(p.getAmount().doubleValue());
                         }
 
-                        for (int i = 0; i < columns.length; i++)
-                            sheet.autoSizeColumn(i);
+                        for (int i = 0; i < columns.length; i++) sheet.autoSizeColumn(i);
                         workbook.write(out);
                         return out.toByteArray();
                     }
                 }).subscribeOn(Schedulers.boundedElastic()));
     }
 
-    // ====================================================================
+    // ════════════════════════════════════════════════════════════════════════
     // REPORTES DE LIBROS (Venta de libros)
-    // ====================================================================
+    // ════════════════════════════════════════════════════════════════════════
 
     public Mono<byte[]> generateBooksPdf() {
-        return paymentService.findAll()
-                .filter(p -> p.getItems() != null && !p.getItems().isEmpty()) // Solo pagos con libros
+        return queryPaymentUseCase.findAll()
+                .filter(p -> p.getItems() != null && !p.getItems().isEmpty())
+                .flatMap(enrichmentService::enrich)
                 .collectList()
                 .flatMap(payments -> Mono.fromCallable(() -> {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -170,9 +169,9 @@ public class PaymentReportService {
 
                     PdfPTable table = new PdfPTable(6);
                     table.setWidthPercentage(100);
-                    table.setWidths(new float[] { 1.5f, 3.5f, 2.5f, 2f, 2f, 1.5f });
+                    table.setWidths(new float[]{1.5f, 3.5f, 2.5f, 2f, 2f, 1.5f});
 
-                    String[] headers = { "Código", "Comprador", "Cant. Libros", "Fecha", "Estado", "Monto (S/)" };
+                    String[] headers = {"Código", "Comprador", "Cant. Libros", "Fecha", "Estado", "Monto (S/)"};
                     Font headFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
                     for (String header : headers) {
                         PdfPCell cell = new PdfPCell(new Phrase(header, headFont));
@@ -187,45 +186,37 @@ public class PaymentReportService {
 
                     for (Payment p : payments) {
                         table.addCell(new PdfPCell(new Phrase("PAG-" + p.getId(), bodyFont)));
-                        String persona = (p.getPeople() != null)
-                                ? p.getPeople().getNombre() + " " + p.getPeople().getApellido()
-                                : "N/A";
-                        table.addCell(new PdfPCell(new Phrase(persona, bodyFont)));
-
+                        table.addCell(new PdfPCell(new Phrase(p.getPeopleId() != null ? "Persona #" + p.getPeopleId() : "N/A", bodyFont)));
                         int cantLibros = p.getItems().stream().mapToInt(Payment.BookItem::getQuantity).sum();
                         table.addCell(new PdfPCell(new Phrase(String.valueOf(cantLibros), bodyFont)));
-
                         table.addCell(new PdfPCell(new Phrase(
                                 p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "",
                                 bodyFont)));
-                        table.addCell(new PdfPCell(new Phrase(p.getStatus(), bodyFont)));
-                        table.addCell(new PdfPCell(
-                                new Phrase(p.getAmount() != null ? p.getAmount().toString() : "0.00", bodyFont)));
+                        table.addCell(new PdfPCell(new Phrase(p.getStatus() != null ? p.getStatus().name() : "", bodyFont)));
+                        table.addCell(new PdfPCell(new Phrase(p.getAmount() != null ? p.getAmount().toString() : "0.00", bodyFont)));
 
-                        if ("CONFIRMADO".equals(p.getStatus()) && p.getAmount() != null) {
+                        if (PaymentStatus.COMPLETED.equals(p.getStatus()) && p.getAmount() != null) {
                             total += p.getAmount().doubleValue();
                         }
                     }
                     document.add(table);
-
                     document.add(Chunk.NEWLINE);
-                    Paragraph summary = new Paragraph("Total Recaudado (S/.): " + String.format("%.2f", total),
-                            titleFont);
+                    Paragraph summary = new Paragraph("Total Recaudado (S/.): " + String.format("%.2f", total), titleFont);
                     summary.setAlignment(Element.ALIGN_RIGHT);
                     document.add(summary);
-
                     document.close();
                     return out.toByteArray();
                 }).subscribeOn(Schedulers.boundedElastic()));
     }
 
     public Mono<byte[]> generateBooksExcel() {
-        return paymentService.findAll()
+        return queryPaymentUseCase.findAll()
                 .filter(p -> p.getItems() != null && !p.getItems().isEmpty())
+                .flatMap(enrichmentService::enrich)
                 .collectList()
                 .flatMap(payments -> Mono.fromCallable(() -> {
                     try (Workbook workbook = new XSSFWorkbook();
-                            ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                         ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                         Sheet sheet = workbook.createSheet("Libros");
 
                         CellStyle headerStyle = workbook.createCellStyle();
@@ -237,7 +228,7 @@ public class PaymentReportService {
                         headerStyle.setFont(font);
 
                         Row headerRow = sheet.createRow(0);
-                        String[] columns = { "Código", "Comprador", "Cant. Libros", "Fecha", "Estado", "Monto (S/)" };
+                        String[] columns = {"Código", "Comprador", "Cant. Libros", "Fecha", "Estado", "Monto (S/)"};
                         for (int i = 0; i < columns.length; i++) {
                             Cell cell = headerRow.createCell(i);
                             cell.setCellValue(columns[i]);
@@ -248,21 +239,15 @@ public class PaymentReportService {
                         for (Payment p : payments) {
                             Row row = sheet.createRow(rowIdx++);
                             row.createCell(0).setCellValue("PAG-" + p.getId());
-                            String persona = (p.getPeople() != null)
-                                    ? p.getPeople().getNombre() + " " + p.getPeople().getApellido()
-                                    : "N/A";
-                            row.createCell(1).setCellValue(persona);
+                            row.createCell(1).setCellValue(p.getPeopleId() != null ? "Persona #" + p.getPeopleId() : "N/A");
                             int cantLibros = p.getItems().stream().mapToInt(Payment.BookItem::getQuantity).sum();
                             row.createCell(2).setCellValue(cantLibros);
-                            row.createCell(3).setCellValue(
-                                    p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "");
-                            row.createCell(4).setCellValue(p.getStatus());
-                            if (p.getAmount() != null)
-                                row.createCell(5).setCellValue(p.getAmount().doubleValue());
+                            row.createCell(3).setCellValue(p.getPaymentDate() != null ? p.getPaymentDate().toLocalDate().toString() : "");
+                            row.createCell(4).setCellValue(p.getStatus() != null ? p.getStatus().name() : "");
+                            if (p.getAmount() != null) row.createCell(5).setCellValue(p.getAmount().doubleValue());
                         }
 
-                        for (int i = 0; i < columns.length; i++)
-                            sheet.autoSizeColumn(i);
+                        for (int i = 0; i < columns.length; i++) sheet.autoSizeColumn(i);
                         workbook.write(out);
                         return out.toByteArray();
                     }
