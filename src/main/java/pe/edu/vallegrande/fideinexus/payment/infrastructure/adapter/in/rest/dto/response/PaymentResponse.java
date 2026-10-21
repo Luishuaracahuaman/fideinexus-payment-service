@@ -18,8 +18,10 @@ public class PaymentResponse {
     private Long id;
     private Long personaId;
     private Long requestReferenceId;
+    private Long serviceId;
     private BigDecimal monto;
     private String metodoPago;
+    private String paymentMethod;
     private String status;
     private LocalDateTime validationDate;
     private Long tenantId;
@@ -33,8 +35,9 @@ public class PaymentResponse {
 
     // Aliases para máxima compatibilidad con el frontend
     public Long getPeopleId() { return personaId; }
-    public Long getRequestId() { return requestReferenceId; }
+    public Long getRequestId() { return serviceId != null ? serviceId : requestReferenceId; }
+    public Long getServiceId() { return serviceId != null ? serviceId : requestReferenceId; }
     public BigDecimal getAmount() { return monto; }
-    public String getPaymentMethod() { return metodoPago; }
+    public String getPaymentMethod() { return paymentMethod != null ? paymentMethod : metodoPago; }
     public LocalDateTime getPaymentDate() { return validationDate; }
 }

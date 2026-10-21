@@ -28,8 +28,28 @@ public class PaymentRestMapper {
         Payment payment = new Payment();
         payment.setTenantId(request.getTenantId());
         payment.setPersonaId(request.getPersonaId() != null ? request.getPersonaId() : request.getPeopleId());
-        payment.setRequestReferenceId(request.getRequestReferenceId() != null ? request.getRequestReferenceId() : request.getRequestId());
+        
+        Long serviceOrRequestId = request.getServiceId() != null 
+                ? request.getServiceId() 
+                : (request.getRequestId() != null ? request.getRequestId() : request.getRequestReferenceId());
+        payment.setRequestReferenceId(serviceOrRequestId);
+        payment.setServiceId(serviceOrRequestId);
+
         payment.setMonto(request.getMonto() != null ? request.getMonto() : request.getAmount());
+        
+        String method = request.getPaymentMethod() != null ? request.getPaymentMethod() : request.getMetodoPago();
+        if (method != null && !method.isBlank()) {
+            payment.setMetodoPago(method.trim().toUpperCase());
+        }
+        
+        payment.setReference(request.getReference());
+
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            payment.setStatus(PaymentStatus.fromString(request.getStatus()));
+        } else {
+            payment.setStatus(PaymentStatus.PENDING);
+        }
+
         payment.setItems(request.getItems());
         return payment;
     }
@@ -42,8 +62,16 @@ public class PaymentRestMapper {
         Payment payment = new Payment();
         payment.setMonto(request.getMonto() != null ? request.getMonto() : request.getAmount());
         payment.setPersonaId(request.getPersonaId() != null ? request.getPersonaId() : request.getPeopleId());
-        payment.setRequestReferenceId(request.getRequestReferenceId() != null ? request.getRequestReferenceId() : request.getRequestId());
-        payment.setMetodoPago(request.getMetodoPago() != null ? request.getMetodoPago() : request.getPaymentMethod());
+        
+        Long serviceOrRequestId = request.getRequestReferenceId() != null ? request.getRequestReferenceId() : request.getRequestId();
+        payment.setRequestReferenceId(serviceOrRequestId);
+        payment.setServiceId(serviceOrRequestId);
+
+        String method = request.getMetodoPago() != null ? request.getMetodoPago() : request.getPaymentMethod();
+        if (method != null && !method.isBlank()) {
+            payment.setMetodoPago(method.trim().toUpperCase());
+        }
+
         payment.setReference(request.getReference());
         payment.setTenantId(request.getTenantId());
         payment.setCancelReason(request.getCancelReason());
@@ -63,9 +91,14 @@ public class PaymentRestMapper {
         PaymentResponse response = new PaymentResponse();
         response.setId(domain.getId());
         response.setPersonaId(domain.getPersonaId());
-        response.setRequestReferenceId(domain.getRequestReferenceId());
+        
+        Long refId = domain.getServiceId() != null ? domain.getServiceId() : domain.getRequestReferenceId();
+        response.setRequestReferenceId(refId);
+        response.setServiceId(refId);
+
         response.setMonto(domain.getMonto());
         response.setMetodoPago(domain.getMetodoPago());
+        response.setPaymentMethod(domain.getMetodoPago());
         response.setStatus(domain.getStatus() != null ? domain.getStatus().name() : null);
         response.setValidationDate(domain.getValidationDate());
         response.setTenantId(domain.getTenantId());

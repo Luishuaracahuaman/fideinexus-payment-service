@@ -1,13 +1,10 @@
 package pe.edu.vallegrande.fideinexus.payment.domain.vo;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Value Object de Dominio: Estados de un Pago.
- *
- * Estados principales del ciclo de vida:
- *  - PENDING: Pago registrado por otro microservicio, pendiente de confirmación en finanzas.
- *  - COMPLETED: Pago completado desde finanzas con método de pago asignado.
- *  - FAILED: Pago fallido por inconsistencia técnica o de validación.
- *  - CANCELLED / REJECTED / REFUNDED: Flujos complementarios de anulación y reembolso.
  */
 public enum PaymentStatus {
 
@@ -18,9 +15,7 @@ public enum PaymentStatus {
     REFUNDED,
     REJECTED;
 
-    /**
-     * Convierte valores string (incluyendo nombres en español y legacy) al Enum del dominio.
-     */
+    @JsonCreator
     public static PaymentStatus fromString(String value) {
         if (value == null || value.isBlank()) return PENDING;
         return switch (value.toUpperCase().trim().replace(" ", "_")) {
@@ -31,6 +26,18 @@ public enum PaymentStatus {
             case "REFUNDED", "REEMBOLSADO", "REEMBOLSADOS" -> REFUNDED;
             case "REJECTED", "RECHAZADO", "RECHAZADOS" -> REJECTED;
             default -> PENDING;
+        };
+    }
+
+    @JsonValue
+    public String toFrontend() {
+        return switch (this) {
+            case COMPLETED -> "CONFIRMADO";
+            case PENDING -> "POR CONFIRMAR";
+            case CANCELLED -> "ANULADO";
+            case REFUNDED -> "REEMBOLSADO";
+            case REJECTED -> "RECHAZADO";
+            default -> this.name();
         };
     }
 

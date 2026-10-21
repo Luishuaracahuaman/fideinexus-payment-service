@@ -25,7 +25,7 @@ import pe.edu.vallegrande.fideinexus.payment.infrastructure.service.PaymentRepor
  *  GET /payments/reportes/libros/excel       → Reporte Excel de libros
  */
 @RestController
-@RequestMapping("/payments/reportes")
+@RequestMapping({"/api/v1/finance/reportes", "/payments/reportes", "/finance/reportes"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PaymentReportController {
@@ -33,7 +33,7 @@ public class PaymentReportController {
     private final PaymentReportService paymentReportService;
 
     @GetMapping(value = "/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosPdf() {
         return paymentReportService.generateSacramentosPdf()
                 .map(bytes -> ResponseEntity.ok()
@@ -43,7 +43,7 @@ public class PaymentReportController {
     }
 
     @GetMapping(value = "/sacramentos/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosExcel() {
         return paymentReportService.generateSacramentosExcel()
                 .map(bytes -> ResponseEntity.ok()
@@ -53,7 +53,7 @@ public class PaymentReportController {
     }
 
     @GetMapping(value = "/libros/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportBooksPdf() {
         return paymentReportService.generateBooksPdf()
                 .map(bytes -> ResponseEntity.ok()
@@ -63,7 +63,7 @@ public class PaymentReportController {
     }
 
     @GetMapping(value = "/libros/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportBooksExcel() {
         return paymentReportService.generateBooksExcel()
                 .map(bytes -> ResponseEntity.ok()

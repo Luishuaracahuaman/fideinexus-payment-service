@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 8086
 
 spring:
@@ -46,4 +46,4 @@ external:
     requests:
       url: https://lab.vallegrande.edu.pe/fideiNexus-solicitud/v1/requests
     people:
-      url: https://lab.vallegrande.edu.pe/fideiNexus-persona/v1/people
+      url: ${USERS_SERVICE_URL:http://localhost:8765/api/v1/users}

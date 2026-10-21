@@ -51,12 +51,32 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
                 throw new IllegalArgumentException("El identificador de la persona (personaId) es obligatorio.");
             }
 
-            // Regla de origen: el pago proviene de una solicitud o de venta de libros
+            // Regla de origen: el pago proviene de una solicitud/servicio o de venta de libros
             validatePaymentOrigin(payment);
 
-            // Regla de negocio: Todo pago nuevo nace en estado PENDING y sin método de pago asignado
-            payment.setStatus(PaymentStatus.PENDING);
-            payment.setCreatedAt(LocalDateTime.now());
+            // Respetar y asignar método de pago si vino en la solicitud
+            if (payment.getMetodoPago() != null && !payment.getMetodoPago().isBlank()) {
+                payment.setMetodoPago(payment.getMetodoPago().trim().toUpperCase());
+            }
+
+            // Respetar y asignar referencia si vino en la solicitud
+            if (payment.getReference() != null && !payment.getReference().isBlank()) {
+                payment.setReference(payment.getReference().trim());
+            }
+
+            // Si el estado vino nulo, por defecto PENDING
+            if (payment.getStatus() == null) {
+                payment.setStatus(PaymentStatus.PENDING);
+            }
+
+            // Si el estado es COMPLETED y no tiene validationDate, asignar ahora
+            if (payment.getStatus() == PaymentStatus.COMPLETED && payment.getValidationDate() == null) {
+                payment.setValidationDate(LocalDateTime.now());
+            }
+
+            if (payment.getCreatedAt() == null) {
+                payment.setCreatedAt(LocalDateTime.now());
+            }
             payment.setUpdatedAt(LocalDateTime.now());
             return payment;
         })
@@ -76,10 +96,6 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
 
     @Override
     public Mono<Payment> completePayment(Long id, String metodoPago, String reference, Long confirmedBy) {
-        if (metodoPago == null || metodoPago.trim().isEmpty()) {
-            return Mono.error(new IllegalArgumentException("El método de pago es obligatorio para completar la operación."));
-        }
-
         return paymentRepositoryPort.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("No se encontró el pago con ID: " + id)))
                 .flatMap(payment -> {
@@ -89,17 +105,33 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
                                 "Solo es posible completar pagos en estado PENDING. Estado actual: " + payment.getStatus()));
                     }
 
-                    payment.setMetodoPago(metodoPago.trim().toUpperCase());
-                    payment.setReference(reference);
+                    // Si se envía un nuevo método de pago en el request, actualizarlo; de lo contrario mantener el existente
+                    if (metodoPago != null && !metodoPago.trim().isEmpty()) {
+                        payment.setMetodoPago(metodoPago.trim().toUpperCase());
+                    }
+
+                    // Validar sobre la entidad ya consolidada
+                    if (payment.getMetodoPago() == null || payment.getMetodoPago().trim().isEmpty()) {
+                        return Mono.error(new IllegalArgumentException("El método de pago es obligatorio para completar la operación."));
+                    }
+
+                    // Si se envía una nueva referencia, actualizarla; de lo contrario mantener la existente
+                    if (reference != null && !reference.trim().isEmpty()) {
+                        payment.setReference(reference.trim());
+                    }
+
                     payment.setStatus(PaymentStatus.COMPLETED);
                     payment.setValidationDate(LocalDateTime.now());
-                    payment.setConfirmedBy(confirmedBy);
+                    if (confirmedBy != null) {
+                        payment.setConfirmedBy(confirmedBy);
+                    }
                     payment.setConfirmedAt(LocalDateTime.now());
                     payment.setUpdatedAt(LocalDateTime.now());
 
                     return paymentRepositoryPort.save(payment);
                 })
-                .doOnSuccess(completed -> log.info("[PAYMENT] Pago con ID={} completado con éxito con método={}", id, metodoPago))
+                .doOnSuccess(completed -> log.info("[PAYMENT] Pago con ID={} completado con éxito con método={}, confirmedBy={}", 
+                        id, completed.getMetodoPago(), completed.getConfirmedBy()))
                 .doOnError(err -> log.warn("[PAYMENT] No se pudo completar el pago con ID={}: {}", id, err.getMessage()));
     }
 
@@ -262,7 +294,7 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
     // ─────────────────────────────────────────────────────────────────────────
 
     private void validatePaymentOrigin(Payment payment) {
-        boolean hasRequest = payment.getRequestReferenceId() != null;
+        boolean hasRequest = (payment.getRequestReferenceId() != null && payment.getRequestReferenceId() > 0) || (payment.getServiceId() != null && payment.getServiceId() > 0);
         boolean hasItems = payment.getItems() != null && !payment.getItems().isEmpty();
 
         if (hasRequest && hasItems) {

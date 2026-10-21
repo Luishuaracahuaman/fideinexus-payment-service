@@ -49,25 +49,25 @@ public class PaymentPersistenceAdapter implements PaymentRepositoryPort {
 
     @Override
     public Flux<Payment> findAll() {
-        return paymentJpaRepository.findAll()
+        return paymentJpaRepository.findAllByOrderByIdDesc()
                 .map(this::toDomain);
     }
 
     @Override
     public Flux<Payment> findByTenantId(Long tenantId) {
-        return paymentJpaRepository.findByTenantId(tenantId)
+        return paymentJpaRepository.findByTenantIdOrderByIdDesc(tenantId)
                 .map(this::toDomain);
     }
 
     @Override
     public Flux<Payment> findByPersonaId(Long personaId) {
-        return paymentJpaRepository.findByPersonaId(personaId)
+        return paymentJpaRepository.findByPersonaIdOrderByIdDesc(personaId)
                 .map(this::toDomain);
     }
 
     @Override
     public Flux<Payment> findByRequestReferenceId(Long requestReferenceId) {
-        return paymentJpaRepository.findByRequestReferenceId(requestReferenceId)
+        return paymentJpaRepository.findByRequestReferenceIdOrderByIdDesc(requestReferenceId)
                 .map(this::toDomain);
     }
 
@@ -76,7 +76,7 @@ public class PaymentPersistenceAdapter implements PaymentRepositoryPort {
         if (status == null) {
             return Flux.empty();
         }
-        return paymentJpaRepository.findByStatus(status.toDbValue())
+        return paymentJpaRepository.findByStatusOrderByIdDesc(status.toDbValue())
                 .map(this::toDomain);
     }
 

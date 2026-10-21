@@ -3,21 +3,17 @@ package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.enrichm
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import pe.edu.vallegrande.fideinexus.payment.client.BookClient;
 import pe.edu.vallegrande.fideinexus.payment.client.PeopleClient;
 import pe.edu.vallegrande.fideinexus.payment.client.RequestClient;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
+import pe.edu.vallegrande.fideinexus.payment.dto.PeopleInfo;
 
 /**
- * Servicio de infraestructura para enriquecer pagos con datos de otros microservicios.
- *
- * Este componente es un adaptador de salida secundario que consulta
- * servicios externos (People, Request, Books) para añadir información
- * descriptiva al modelo de dominio.
- *
- * El dominio NO conoce este servicio; es usado por el controlador REST
- * y el servicio de reportes cuando necesitan datos enriquecidos para mostrar.
+ * Servicio de infraestructura para enriquecer pagos con datos de otros microservicios
+ * y suministrar listas filtradas de entidades externas (feligreses, libros, solicitudes).
  */
 @Slf4j
 @Component
@@ -36,5 +32,16 @@ public class PaymentEnrichmentService {
      */
     public Mono<Payment> enrich(Payment payment) {
         return Mono.just(payment);
+    }
+
+    /**
+     * Consume PeopleClient para retornar la lista filtrada de feligreses al frontend.
+     * El parámetro tenantId es dinámico y se resuelve automáticamente del contexto si viene nulo.
+     *
+     * @param tenantId ID del tenant/parroquia (opcional)
+     * @return Flux de PeopleInfo con los feligreses filtrados
+     */
+    public Flux<PeopleInfo> getFeligreses(Long tenantId) {
+        return peopleClient.findFeligreses(tenantId);
     }
 }

@@ -1,17 +1,19 @@
 package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 /**
- * DTO de entrada para completar un pago desde el Frontend de Finanzas.
+ * DTO de entrada para completar o confirmar un pago desde el Frontend de Finanzas.
  * 
  * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/adapter/in/rest/dto/request/)
  * 
- * Recibe el método de pago elegido (EFECTIVO, TRANSFERENCIA, YAPE, PLIN, etc.)
- * y datos complementarios de auditoría o referencia/voucher.
+ * Soporta payloads de confirmación simples: { "confirmedBy": 1 }
+ * así como payloads completos con método de pago y voucher.
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CompletePaymentRequest {
 
     /** Método de pago asignado por el operador de finanzas */
@@ -19,11 +21,11 @@ public class CompletePaymentRequest {
     private String metodoPago;
 
     /** Código de referencia o número de voucher/operación */
-    @JsonAlias({"voucher", "reference_number"})
+    @JsonAlias({"voucher", "reference_number", "referencia"})
     private String reference;
 
-    /** Identificador del usuario de finanzas que completa la operación */
-    @JsonAlias({"confirmed_by", "userId", "user_id"})
+    /** Identificador del usuario que completa/confirma la operación */
+    @JsonAlias({"confirmed_by", "userId", "user_id", "confirmedBy"})
     private Long confirmedBy;
 
     // Métodos alias para compatibilidad programática interna
@@ -32,8 +34,6 @@ public class CompletePaymentRequest {
     }
 
     public void setPaymentMethod(String paymentMethod) {
-        if (this.metodoPago == null) {
-            this.metodoPago = paymentMethod;
-        }
+        this.metodoPago = paymentMethod;
     }
 }

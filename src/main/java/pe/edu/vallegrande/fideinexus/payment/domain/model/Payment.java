@@ -198,6 +198,9 @@ public class Payment {
 
     // ── Métodos puente (compatibilidad con servicios auxiliares) ────────────
 
+    public Long getServiceId() { return requestReferenceId; }
+    public void setServiceId(Long serviceId) { this.requestReferenceId = serviceId; }
+
     public Long getPeopleId() { return personaId; }
     public void setPeopleId(Long peopleId) { this.personaId = peopleId; }
 
