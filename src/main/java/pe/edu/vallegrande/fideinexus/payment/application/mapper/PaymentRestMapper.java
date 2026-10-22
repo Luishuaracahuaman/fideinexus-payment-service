@@ -1,21 +1,22 @@
-package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.mapper;
+package pe.edu.vallegrande.fideinexus.payment.application.mapper;
 
 import org.springframework.stereotype.Component;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.CompletePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.CreatePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.ReasonRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.UpdatePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PaymentResponse;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
 import pe.edu.vallegrande.fideinexus.payment.domain.vo.PaymentStatus;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.CompletePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.CreatePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.UpdatePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.response.PaymentResponse;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Mapper de la capa REST para convertir entre DTOs y el modelo de dominio Payment.
+ * Mapper de la capa de Aplicación para convertir entre DTOs y el modelo de Dominio puro Payment.
  *
- * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/adapter/in/rest/mapper/).
+ * Ubicación: Capa de APLICACIÓN (application/mapper/).
  */
 @Component
 public class PaymentRestMapper {

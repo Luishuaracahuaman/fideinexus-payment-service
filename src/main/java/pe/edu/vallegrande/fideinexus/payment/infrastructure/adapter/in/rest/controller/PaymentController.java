@@ -1,5 +1,6 @@
 package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,32 +8,32 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.CompletePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.CreatePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.ReasonRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.request.UpdatePaymentRequest;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PaymentResponse;
+import pe.edu.vallegrande.fideinexus.payment.application.mapper.PaymentRestMapper;
+import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentEnrichmentService;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
 import pe.edu.vallegrande.fideinexus.payment.domain.port.in.CompletePaymentUseCase;
 import pe.edu.vallegrande.fideinexus.payment.domain.port.in.CreatePaymentUseCase;
 import pe.edu.vallegrande.fideinexus.payment.domain.port.in.QueryPaymentUseCase;
 import pe.edu.vallegrande.fideinexus.payment.domain.port.in.UpdatePaymentUseCase;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.CompletePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.CreatePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.ReasonRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.UpdatePaymentRequest;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.mapper.PaymentRestMapper;
-import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
-import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentEnrichmentService;
 
 /**
  * Adaptador de Entrada REST (Driving Adapter).
  *
  * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/adapter/in/rest/controller/).
- * 
- * Regla de Arquitectura Hexagonal:
- * - NO contiene lógica de negocio ni mapeos directos.
- * - Su única función es recibir peticiones HTTP no bloqueantes (WebFlux),
- *   delegar la conversión a PaymentRestMapper, invocar los casos de uso
- *   (puertos de entrada) y devolver respuestas reactivas.
+ * Convenciones:
+ * - Rutas en plural y kebab-case (/api/v1/payments).
+ * - Variables en camelCase estricto.
+ * - Validación declarativa con @Valid en todos los payloads de entrada.
+ * - Fronteras limpias: Request DTO -> Dominio -> Response DTO.
  */
 @RestController
-@RequestMapping({"/api/v1/finance", "/payments", "/finance"})
+@RequestMapping({"/api/v1/payments", "/payments", "/api/v1/finance/payments", "/finance"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PaymentController {
@@ -45,14 +46,15 @@ public class PaymentController {
     private final PaymentEnrichmentService paymentEnrichmentService;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 1. ENDPOINT: Centralizador - Registrar pago inicial (Otros microservicios)
+    // 1. ENDPOINT: Centralizador - Registrar pago inicial
     // ─────────────────────────────────────────────────────────────────────────
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Mono<ResponseEntity<Payment>> createPayment(@RequestBody CreatePaymentRequest request) {
+    public Mono<ResponseEntity<PaymentResponse>> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
         Payment domainPayment = paymentRestMapper.toDomain(request);
         return createPaymentUseCase.createPayment(domainPayment)
+                .map(paymentRestMapper::toResponse)
                 .map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved));
     }
 
@@ -62,15 +64,16 @@ public class PaymentController {
 
     @PatchMapping({"/{id}/complete", "/{id}/confirm"})
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> completePayment(
+    public Mono<ResponseEntity<PaymentResponse>> completePayment(
             @PathVariable Long id,
-            @RequestBody(required = false) CompletePaymentRequest request) {
+            @Valid @RequestBody(required = false) CompletePaymentRequest request) {
         CompletePaymentRequest req = request != null ? request : new CompletePaymentRequest();
         return completePaymentUseCase.completePayment(
                         id,
                         req.getMetodoPago(),
                         req.getReference(),
                         req.getConfirmedBy())
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
@@ -80,60 +83,71 @@ public class PaymentController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> findById(@PathVariable Long id) {
+    public Mono<ResponseEntity<PaymentResponse>> findById(@PathVariable Long id) {
         return queryPaymentUseCase.findById(id)
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findAll(@RequestParam(required = false) String status) {
+    public Flux<PaymentResponse> findAll(@RequestParam(required = false) String status) {
         if (status != null && !status.isBlank()) {
-            return queryPaymentUseCase.findByStatus(status);
+            return queryPaymentUseCase.findByStatus(status)
+                    .map(paymentRestMapper::toResponse);
         }
-        return queryPaymentUseCase.findAll();
+        return queryPaymentUseCase.findAll()
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/status/{status}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findByStatus(@PathVariable String status) {
-        return queryPaymentUseCase.findByStatus(status);
+    public Flux<PaymentResponse> findByStatus(@PathVariable String status) {
+        return queryPaymentUseCase.findByStatus(status)
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/completed")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findCompletedPayments() {
-        return queryPaymentUseCase.findByStatus("COMPLETED");
+    public Flux<PaymentResponse> findCompletedPayments() {
+        return queryPaymentUseCase.findByStatus("COMPLETED")
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findPendingPayments() {
-        return queryPaymentUseCase.findByStatus("PENDING");
+    public Flux<PaymentResponse> findPendingPayments() {
+        return queryPaymentUseCase.findByStatus("PENDING")
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/cancelled")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findCancelledPayments() {
-        return queryPaymentUseCase.findByStatus("CANCELLED");
+    public Flux<PaymentResponse> findCancelledPayments() {
+        return queryPaymentUseCase.findByStatus("CANCELLED")
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/persona/{personaId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findByPersonaId(@PathVariable Long personaId) {
-        return queryPaymentUseCase.findByPeopleId(personaId);
+    public Flux<PaymentResponse> findByPersonaId(@PathVariable Long personaId) {
+        return queryPaymentUseCase.findByPeopleId(personaId)
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/people/{peopleId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findByPeopleId(@PathVariable Long peopleId) {
-        return queryPaymentUseCase.findByPeopleId(peopleId);
+    public Flux<PaymentResponse> findByPeopleId(@PathVariable Long peopleId) {
+        return queryPaymentUseCase.findByPeopleId(peopleId)
+                .map(paymentRestMapper::toResponse);
     }
 
     @GetMapping("/tenant/{tenantId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Flux<Payment> findByTenantId(@PathVariable Long tenantId) {
-        return queryPaymentUseCase.findByTenantId(tenantId).switchIfEmpty(queryPaymentUseCase.findAll());
+    public Flux<PaymentResponse> findByTenantId(@PathVariable Long tenantId) {
+        return queryPaymentUseCase.findByTenantId(tenantId)
+                .switchIfEmpty(queryPaymentUseCase.findAll())
+                .map(paymentRestMapper::toResponse);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -142,50 +156,54 @@ public class PaymentController {
 
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> cancelPayment(
+    public Mono<ResponseEntity<PaymentResponse>> cancelPayment(
             @PathVariable Long id,
-            @RequestBody ReasonRequest request) {
+            @Valid @RequestBody ReasonRequest request) {
         return completePaymentUseCase.cancelPayment(id, request.getReason())
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> rejectPayment(
+    public Mono<ResponseEntity<PaymentResponse>> rejectPayment(
             @PathVariable Long id,
-            @RequestBody ReasonRequest request) {
+            @Valid @RequestBody ReasonRequest request) {
         return completePaymentUseCase.rejectPayment(id, request.getReason())
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{id}/refund")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> refundPayment(
+    public Mono<ResponseEntity<PaymentResponse>> refundPayment(
             @PathVariable Long id,
-            @RequestBody ReasonRequest request) {
+            @Valid @RequestBody ReasonRequest request) {
         return completePaymentUseCase.refundPayment(id, request.getReason())
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 5. ENDPOINT: Editar pago existente (solo datos enviados en el formulario y estado)
+    // 5. ENDPOINT: Editar pago existente
     // ─────────────────────────────────────────────────────────────────────────
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> updatePayment(
+    public Mono<ResponseEntity<PaymentResponse>> updatePayment(
             @PathVariable Long id,
-            @RequestBody UpdatePaymentRequest request) {
+            @Valid @RequestBody UpdatePaymentRequest request) {
         Payment domainUpdates = paymentRestMapper.toDomain(request);
         return updatePaymentUseCase.updatePayment(id, domainUpdates)
+                .map(paymentRestMapper::toResponse)
                 .map(ResponseEntity::ok);
     }
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
-    public Mono<ResponseEntity<Payment>> patchPayment(
+    public Mono<ResponseEntity<PaymentResponse>> patchPayment(
             @PathVariable Long id,
-            @RequestBody UpdatePaymentRequest request) {
+            @Valid @RequestBody UpdatePaymentRequest request) {
         return updatePayment(id, request);
     }
 

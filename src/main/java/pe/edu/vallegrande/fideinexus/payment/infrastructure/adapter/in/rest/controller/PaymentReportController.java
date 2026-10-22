@@ -14,25 +14,19 @@ import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentReportSe
  * Adaptador de ENTRADA: Controlador REST para reportes de pagos.
  *
  * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/adapter/in/rest/controller/).
- *
- * Expone endpoints para generación de reportes en PDF y Excel.
- * Delega la generación de bytes al servicio de infraestructura PaymentReportService.
- *
- * Endpoints:
- *  GET /payments/reportes/sacramentos/pdf    → Reporte PDF de sacramentos
- *  GET /payments/reportes/sacramentos/excel  → Reporte Excel de sacramentos
- *  GET /payments/reportes/libros/pdf         → Reporte PDF de libros
- *  GET /payments/reportes/libros/excel       → Reporte Excel de libros
+ * Convenciones:
+ * - Rutas en plural y kebab-case (/api/v1/payments/reports).
+ * - Generación reactiva de reportes en PDF y Excel.
  */
 @RestController
-@RequestMapping({"/api/v1/finance/reportes", "/payments/reportes", "/finance/reportes"})
+@RequestMapping({"/api/v1/payments/reports", "/api/v1/finance/reportes", "/payments/reportes", "/finance/reportes"})
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PaymentReportController {
 
     private final PaymentReportService paymentReportService;
 
-    @GetMapping(value = "/sacramentos/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = {"/sacraments/pdf", "/sacramentos/pdf"}, produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosPdf() {
         return paymentReportService.generateSacramentosPdf()
@@ -42,7 +36,7 @@ public class PaymentReportController {
                         .body(new ByteArrayResource(bytes)));
     }
 
-    @GetMapping(value = "/sacramentos/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @GetMapping(value = {"/sacraments/excel", "/sacramentos/excel"}, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportSacramentosExcel() {
         return paymentReportService.generateSacramentosExcel()
@@ -52,7 +46,7 @@ public class PaymentReportController {
                         .body(new ByteArrayResource(bytes)));
     }
 
-    @GetMapping(value = "/libros/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = {"/books/pdf", "/libros/pdf"}, produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportBooksPdf() {
         return paymentReportService.generateBooksPdf()
@@ -62,7 +56,7 @@ public class PaymentReportController {
                         .body(new ByteArrayResource(bytes)));
     }
 
-    @GetMapping(value = "/libros/excel", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    @GetMapping(value = {"/books/excel", "/libros/excel"}, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
     public Mono<ResponseEntity<ByteArrayResource>> exportBooksExcel() {
         return paymentReportService.generateBooksExcel()

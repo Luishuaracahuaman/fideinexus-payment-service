@@ -1,65 +1,65 @@
-package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request;
+package pe.edu.vallegrande.fideinexus.payment.application.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment.BookItem;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * DTO de entrada para editar un pago existente desde el formulario.
- * 
- * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/adapter/in/rest/dto/request/)
- * 
- * Permite editar los campos modificables en el formulario:
- * - Datos del pago: monto, método de pago, referencia/voucher.
- * - Estado: PENDING, COMPLETED, CANCELLED, etc.
- * - Referencias: personaId, requestReferenceId, tenantId, cancelReason, confirmedBy, items.
- */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdatePaymentRequest {
 
-    /** Monto del pago */
+    @DecimalMin(value = "0.01", message = "El monto debe ser como mínimo 0.01")
+    @Positive(message = "El monto debe ser un valor positivo")
     @JsonAlias({"amount"})
     private BigDecimal monto;
 
-    /** Método de pago (EFECTIVO, YAPE, PLIN, TRANSFERENCIA, TARJETA, etc.) */
+    @Size(max = 50, message = "El método de pago no puede exceder los 50 caracteres")
     @JsonAlias({"metodo_pago", "paymentMethod", "payment_method"})
     private String metodoPago;
 
-    /** Estado del pago (PENDING, COMPLETED, CANCELLED, etc. o en español: PAGADO, PENDIENTE, CANCELADO) */
+    @Size(max = 50, message = "El estado no puede exceder los 50 caracteres")
     @JsonAlias({"estado", "payment_status"})
     private String status;
 
-    /** Código de comprobante, voucher o número de operación */
+    @Size(max = 100, message = "La referencia no puede exceder los 100 caracteres")
     @JsonAlias({"voucher", "reference_number"})
     private String reference;
 
-    /** ID de la persona asociada */
+    @Positive(message = "El ID de la persona debe ser mayor a cero")
     @JsonAlias({"persona_id", "peopleId", "people_id"})
     private Long personaId;
 
-    /** ID de la solicitud de origen */
+    @Positive(message = "El ID de la solicitud debe ser mayor a cero")
     @JsonAlias({"request_id", "requestId", "request_reference_id"})
     private Long requestReferenceId;
 
-    /** ID del inquilino / parroquia */
+    @Positive(message = "El tenantId debe ser mayor a cero")
     @JsonAlias({"tenant_id"})
     private Long tenantId;
 
-    /** Motivo en caso de cancelación, anulación o rechazo */
+    @Size(max = 500, message = "El motivo no puede exceder los 500 caracteres")
     @JsonAlias({"motivo_cancelacion", "reason", "cancel_reason"})
     private String cancelReason;
 
-    /** ID del usuario auditor que realiza la edición o confirmación */
+    @Positive(message = "El ID del usuario auditor debe ser mayor a cero")
     @JsonAlias({"user_id", "userId", "confirmed_by"})
     private Long confirmedBy;
 
-    /** Lista de items en caso aplique venta de libros */
     private List<BookItem> items;
 
-    // Métodos alias para compatibilidad interna
     public BigDecimal getAmount() { return monto; }
     public void setAmount(BigDecimal amount) { if (this.monto == null) this.monto = amount; }
 

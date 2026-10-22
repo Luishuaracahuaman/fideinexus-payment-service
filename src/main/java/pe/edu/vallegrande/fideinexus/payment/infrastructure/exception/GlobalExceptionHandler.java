@@ -5,19 +5,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.ErrorResponse;
 import pe.edu.vallegrande.fideinexus.payment.domain.exception.ResourceNotFoundException;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.response.ErrorResponse;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Manejador Global de Excepciones para la capa REST reactiva.
  *
  * Ubicación: Capa de INFRAESTRUCTURA (infrastructure/exception/).
- *
- * Captura excepciones de dominio y del framework devolviendo un cuerpo JSON
- * estandarizado con formato ErrorResponse.
  */
 @Slf4j
 @RestControllerAdvice
@@ -36,6 +36,26 @@ public class GlobalExceptionHandler {
                 .path(exchange.getRequest().getPath().value())
                 .build();
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(WebExchangeBindException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            WebExchangeBindException ex,
+            ServerWebExchange exchange) {
+        log.warn("[EXCEPTION] Error de validación en request: {}", ex.getMessage());
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                errors.put(error.getField(), error.getDefaultMessage())
+        );
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("Validation Error")
+                .message("Parámetros de entrada no válidos")
+                .path(exchange.getRequest().getPath().value())
+                .details(errors)
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
