@@ -8,7 +8,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import pe.edu.vallegrande.fideinexus.payment.application.dto.response.ErrorResponse;
+import pe.edu.vallegrande.fideinexus.payment.domain.exception.DomainException;
 import pe.edu.vallegrande.fideinexus.payment.domain.exception.ResourceNotFoundException;
+import pe.edu.vallegrande.fideinexus.payment.infrastructure.exception.custom.ExternalServiceException;
+import pe.edu.vallegrande.fideinexus.payment.infrastructure.exception.custom.PaymentProcessingException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -36,6 +39,51 @@ public class GlobalExceptionHandler {
                 .path(exchange.getRequest().getPath().value())
                 .build();
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<ErrorResponse> handleDomainException(
+            DomainException ex,
+            ServerWebExchange exchange) {
+        log.warn("[EXCEPTION] Error de dominio: {}", ex.getMessage());
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(exchange.getRequest().getPath().value())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(PaymentProcessingException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentProcessing(
+            PaymentProcessingException ex,
+            ServerWebExchange exchange) {
+        log.warn("[EXCEPTION] Error procesando pago: {}", ex.getMessage());
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNPROCESSABLE_ENTITY.value())
+                .error(HttpStatus.UNPROCESSABLE_ENTITY.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(exchange.getRequest().getPath().value())
+                .build();
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorResponse> handleExternalService(
+            ExternalServiceException ex,
+            ServerWebExchange exchange) {
+        log.error("[EXCEPTION] Error en servicio externo: {}", ex.getMessage());
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_GATEWAY.value())
+                .error(HttpStatus.BAD_GATEWAY.getReasonPhrase())
+                .message(ex.getMessage())
+                .path(exchange.getRequest().getPath().value())
+                .build();
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
