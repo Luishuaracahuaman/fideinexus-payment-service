@@ -227,32 +227,49 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
         return paymentRepositoryPort.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("No se encontró el pago con ID: " + id)))
                 .flatMap(existing -> {
-                    // 1. Modificar únicamente los datos editados en el formulario (no nulos)
+                    // Regla de negocio: Solo se pueden editar pagos en estado POR CONFIRMAR (PENDING)
+                    if (existing.getStatus() != PaymentStatus.PENDING) {
+                        return Mono.error(new IllegalStateException(
+                                "No se puede editar el pago porque se encuentra en estado " + existing.getStatus() 
+                                + ". Solo se pueden editar pagos en estado POR CONFIRMAR."));
+                    }
+
+                    // 1. Modificar items (Venta de productos) si fue enviado
+                    if (updates.getItems() != null) {
+                        if (updates.getItems().isEmpty()) {
+                            return Mono.error(new IllegalArgumentException("La venta de productos debe contener al menos 1 producto."));
+                        }
+                        existing.setItems(updates.getItems());
+                    }
+
+                    // 2. Modificar monto si fue editado en el formulario
                     if (updates.getMonto() != null) {
-                        if (updates.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
-                            return Mono.error(new IllegalArgumentException("El monto del pago debe ser mayor a cero."));
+                        // Para venta de libros con items el monto es el total de la compra (> 0); para trámites el mínimo es S/. 10
+                        boolean hasItems = (existing.getItems() != null && !existing.getItems().isEmpty())
+                                || (updates.getItems() != null && !updates.getItems().isEmpty());
+                        if (hasItems) {
+                            if (updates.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+                                return Mono.error(new IllegalArgumentException("El monto total de la venta debe ser mayor a cero."));
+                            }
+                        } else {
+                            if (updates.getMonto().compareTo(new BigDecimal("10")) < 0) {
+                                return Mono.error(new IllegalArgumentException("El monto mínimo permitido es de S/. 10.00."));
+                            }
                         }
                         existing.setMonto(updates.getMonto());
                     }
 
-                    if (updates.getPersonaId() != null) {
-                        existing.setPersonaId(updates.getPersonaId());
-                    }
+                    // 3. Feligrés (personaId) y Solicitud (requestReferenceId/serviceId) NO son editables según regla de negocio
+                    // Se mantienen bloqueados con sus valores originales de base de datos.
 
-                    if (updates.getRequestReferenceId() != null) {
-                        existing.setRequestReferenceId(updates.getRequestReferenceId());
-                    }
-
+                    // 4. Modificar método de pago si fue editado en el formulario
                     if (updates.getMetodoPago() != null && !updates.getMetodoPago().isBlank()) {
                         existing.setMetodoPago(updates.getMetodoPago().trim().toUpperCase());
                     }
 
+                    // 5. Modificar referencia / voucher si fue editada en el formulario
                     if (updates.getReference() != null) {
-                        existing.setReference(updates.getReference());
-                    }
-
-                    if (updates.getTenantId() != null) {
-                        existing.setTenantId(updates.getTenantId());
+                        existing.setReference(updates.getReference().trim());
                     }
 
                     if (updates.getCancelReason() != null) {
@@ -263,11 +280,7 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
                         existing.setConfirmedBy(updates.getConfirmedBy());
                     }
 
-                    if (updates.getItems() != null && !updates.getItems().isEmpty()) {
-                        existing.setItems(updates.getItems());
-                    }
-
-                    // 2. Modificar el estado si fue enviado en el formulario
+                    // 6. Modificar estado si fue enviado
                     if (updates.getStatus() != null) {
                         existing.setStatus(updates.getStatus());
 
@@ -285,7 +298,8 @@ public class PaymentUseCaseImpl implements CreatePaymentUseCase, CompletePayment
 
                     return paymentRepositoryPort.save(existing);
                 })
-                .doOnSuccess(saved -> log.info("[PAYMENT] Pago con ID={} actualizado exitosamente. status={}", id, saved.getStatus()))
+                .doOnSuccess(saved -> log.info("[PAYMENT] Pago con ID={} actualizado exitosamente. monto={}, method={}, ref={}", 
+                        id, saved.getMonto(), saved.getMetodoPago(), saved.getReference()))
                 .doOnError(err -> log.warn("[PAYMENT] Error al actualizar pago con ID={}: {}", id, err.getMessage()));
     }
 
