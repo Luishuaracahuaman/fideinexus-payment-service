@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.fideinexus.payment.infrastructure.service;
+package pe.edu.vallegrande.fideinexus.payment.application.usecase;
 
 import com.lowagie.text.*;
 import com.lowagie.text.Font;
@@ -16,7 +16,7 @@ import reactor.core.scheduler.Schedulers;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
 import pe.edu.vallegrande.fideinexus.payment.domain.port.in.QueryPaymentUseCase;
 import pe.edu.vallegrande.fideinexus.payment.domain.vo.PaymentStatus;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.enrichment.PaymentEnrichmentService;
+import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentEnrichmentService;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;

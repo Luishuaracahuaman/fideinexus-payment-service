@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.service.PaymentReportService;
+import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentReportService;
 
 /**
  * Adaptador de ENTRADA: Controlador REST para reportes de pagos.

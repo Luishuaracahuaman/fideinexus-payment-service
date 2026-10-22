@@ -1,0 +1,18 @@
+﻿# ============================================================
+# Perfil: PRODUCCIÓN (prod)
+# Activar con: --spring.profiles.active=prod
+# ============================================================
+spring:
+  r2dbc:
+    url: ${R2DBC_URL}        # Inyectar vía variable de entorno en producción
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  sql:
+    init:
+      mode: never   # Nunca ejecutar schema.sql en producción
+
+logging:
+  level:
+    pe.edu.vallegrande: WARN
+    root: ERROR

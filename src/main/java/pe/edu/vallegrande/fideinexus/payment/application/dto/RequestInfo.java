@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.fideinexus.payment.dto;
+package pe.edu.vallegrande.fideinexus.payment.application.dto;
 
 import lombok.Data;
 

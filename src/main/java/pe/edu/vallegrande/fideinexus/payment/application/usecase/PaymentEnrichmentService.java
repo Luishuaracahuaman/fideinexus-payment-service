@@ -1,15 +1,15 @@
-package pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.enrichment;
+package pe.edu.vallegrande.fideinexus.payment.application.usecase;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import pe.edu.vallegrande.fideinexus.payment.client.BookClient;
-import pe.edu.vallegrande.fideinexus.payment.client.PeopleClient;
-import pe.edu.vallegrande.fideinexus.payment.client.RequestClient;
+import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.BookClient;
+import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.PeopleClient;
+import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.RequestClient;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
-import pe.edu.vallegrande.fideinexus.payment.dto.PeopleInfo;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
 
 /**
  * Servicio de infraestructura para enriquecer pagos con datos de otros microservicios

@@ -17,8 +17,8 @@ import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.
 import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.ReasonRequest;
 import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.dto.request.UpdatePaymentRequest;
 import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.in.rest.mapper.PaymentRestMapper;
-import pe.edu.vallegrande.fideinexus.payment.dto.PeopleInfo;
-import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.enrichment.PaymentEnrichmentService;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
+import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentEnrichmentService;
 
 /**
  * Adaptador de Entrada REST (Driving Adapter).

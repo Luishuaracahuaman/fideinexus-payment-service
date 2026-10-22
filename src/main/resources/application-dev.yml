@@ -1,0 +1,19 @@
+﻿# ============================================================
+# Perfil: DESARROLLO (dev)
+# Activar con: --spring.profiles.active=dev
+# ============================================================
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/paymentsservice_dev
+    username: postgres
+    password: postgres
+
+  sql:
+    init:
+      mode: always   # Ejecuta schema.sql en cada inicio (útil en dev)
+
+logging:
+  level:
+    pe.edu.vallegrande: DEBUG
+    org.springframework.r2dbc: DEBUG
+    org.springframework.transaction: DEBUG
