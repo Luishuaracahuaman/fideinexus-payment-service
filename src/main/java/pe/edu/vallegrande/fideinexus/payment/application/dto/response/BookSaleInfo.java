@@ -1,4 +1,4 @@
-package pe.edu.vallegrande.fideinexus.payment.application.dto;
+package pe.edu.vallegrande.fideinexus.payment.application.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;

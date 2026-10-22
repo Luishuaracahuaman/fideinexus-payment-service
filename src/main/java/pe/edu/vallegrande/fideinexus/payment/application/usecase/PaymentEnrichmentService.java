@@ -9,7 +9,7 @@ import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.B
 import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.PeopleClient;
 import pe.edu.vallegrande.fideinexus.payment.infrastructure.adapter.out.client.RequestClient;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
-import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PeopleInfo;
 
 /**
  * Servicio de infraestructura para enriquecer pagos con datos de otros microservicios

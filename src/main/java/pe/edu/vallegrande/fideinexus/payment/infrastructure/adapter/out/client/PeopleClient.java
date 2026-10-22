@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import pe.edu.vallegrande.fideinexus.payment.application.dto.PeopleInfo;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PeopleInfo;
 
 @Slf4j
 @Component
