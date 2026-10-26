@@ -65,13 +65,17 @@ public class SecurityConfig {
                             return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
                         }))
                 .authorizeExchange(exchanges -> exchanges
-                        // Rutas públicas de OpenAPI / Swagger
+                        // Rutas públicas de OpenAPI / Swagger y Actuator
                         .pathMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/api-docs/**",
-                                "/webjars/**").permitAll()
+                                "/webjars/**",
+                                "/actuator/**").permitAll()
+                        // Permitir creación de pagos (POST) para checkout / integración externa
+                        .pathMatchers(org.springframework.http.HttpMethod.POST,
+                                "/api/v1/payments", "/payments", "/api/v1/finance/payments", "/finance").permitAll()
                         // Todas las demás peticiones exigen autenticación
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
