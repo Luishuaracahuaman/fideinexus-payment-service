@@ -14,6 +14,7 @@ import pe.edu.vallegrande.fideinexus.payment.application.dto.request.CreatePayme
 import pe.edu.vallegrande.fideinexus.payment.application.dto.request.ReasonRequest;
 import pe.edu.vallegrande.fideinexus.payment.application.dto.request.UpdatePaymentRequest;
 import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PaymentResponse;
+import pe.edu.vallegrande.fideinexus.payment.application.dto.response.PaymentEnrichedResponse;
 import pe.edu.vallegrande.fideinexus.payment.application.mapper.PaymentRestMapper;
 import pe.edu.vallegrande.fideinexus.payment.application.usecase.PaymentEnrichmentService;
 import pe.edu.vallegrande.fideinexus.payment.domain.model.Payment;
@@ -80,6 +81,14 @@ public class PaymentController {
     // ─────────────────────────────────────────────────────────────────────────
     // 3. ENDPOINTS: Consultas reactivas
     // ─────────────────────────────────────────────────────────────────────────
+
+    @GetMapping("/{id}/full")
+    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
+    public Mono<ResponseEntity<PaymentEnrichedResponse>> getPaymentFull(@PathVariable Long id) {
+        return paymentEnrichmentService.getPaymentFull(id)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'SUPERADMIN', 'PARROCO', 'SECRETARIO')")
