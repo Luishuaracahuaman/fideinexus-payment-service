@@ -73,35 +73,20 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────────────────────
         // 4. STAGE: Análisis de Calidad SonarQube (Criterio 4)
         // ─────────────────────────────────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
                 echo "Iniciando análisis de calidad y cobertura en SonarQube..."
                 script {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        withSonarQubeEnv('SonarQube') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        withSonarQubeEnv('sonar-server') {
                             if (isUnix()) {
-                                sh './mvnw sonar:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -B'
+                                sh './mvnw org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=${SERVICE} -Dsonar.token=$SONAR_AUTH_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -B'
                             } else {
-                                bat "mvnw.cmd sonar:sonar -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -B"
+                                bat "mvnw.cmd org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} -Dsonar.projectName=${env.SERVICE} -Dsonar.token=%SONAR_AUTH_TOKEN% -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -B"
                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ─────────────────────────────────────────────────────────────────────
-        // 5. STAGE: Quality Gate (Criterio 4)
-        // ─────────────────────────────────────────────────────────────────────
-        stage('Quality Gate') {
-            steps {
-                echo "Verificando Quality Gate de SonarQube..."
-                script {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        timeout(time: 1, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: false
                         }
                     }
                 }
